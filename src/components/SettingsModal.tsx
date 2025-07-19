@@ -74,6 +74,11 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
       }
     }, 1000);
   };
+  const handleAddFeed = () => {
+    if (newFeed.name && newFeed.url) {
+      onSendMessage({
+        type: 'add_feed',
+        payload: {
           name: newFeed.name,
           url: newFeed.url,
           categories_uid: newFeed.categories_uid ? parseInt(newFeed.categories_uid) : null,
