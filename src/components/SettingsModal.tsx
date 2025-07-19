@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { X, Plus, Edit2, Save, Trash2, Settings, Rss, Hash, MessageSquare, Database, AlertCircle, CheckCircle, Key, Twitter } from 'lucide-react';
+import { X, Plus, Edit2, Save, Trash2, Database, Key, MessageSquare, Info, AlertTriangle, CheckCircle, XCircle } from 'lucide-react';
 import { ApiKeyItem } from './ApiKeyItem';
 import { DatabaseViewModal } from './DatabaseViewModal';
 
@@ -21,59 +21,26 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
   initialTab = 'feeds'
 }) => {
   const [activeTab, setActiveTab] = useState(initialTab);
-  const [newFeed, setNewFeed] = useState({ name: '', url: '', categories_uid: '', logo_url: '' });
+  const [newFeed, setNewFeed] = useState({
+    name: '',
+    url: '',
+    categories_uid: '',
+    logo_url: ''
+  });
   const [newCategory, setNewCategory] = useState('');
-  const [newReaction, setNewReaction] = useState({ type: '', prompt: '' });
   const [editingFeed, setEditingFeed] = useState<any>(null);
   const [editingCategory, setEditingCategory] = useState<any>(null);
+  const [editingApiKey, setEditingApiKey] = useState<string | null>(null);
+  const [editingApiValues, setEditingApiValues] = useState<{ [key: string]: string }>({});
   const [editingReaction, setEditingReaction] = useState<any>(null);
-  const [editingXaiKey, setEditingXaiKey] = useState(false);
-  const [editingTwitterKeys, setEditingTwitterKeys] = useState(false);
-  const [xaiKeyValue, setXaiKeyValue] = useState('');
-  const [twitterKeyValues, setTwitterKeyValues] = useState({
-    BEARER: '',
-    CONSUMER_KEY: '',
-    CONSUMER_SECRET: '',
-    ACCESS_TOKEN: '',
-    ACCESS_SECRET: ''
-  });
+  const [newReaction, setNewReaction] = useState({ type: '', prompt: '' });
+  const [dbModalOpen, setDbModalOpen] = useState(false);
   const [validationInProgress, setValidationInProgress] = useState(false);
   const [validationModal, setValidationModal] = useState<{
-    isOpen: boolean;
-    isValid: boolean;
+    show: boolean;
+    success: boolean;
     message: string;
-  }>({ isOpen: false, isValid: false, message: '' });
-  const [isDatabaseViewOpen, setIsDatabaseViewOpen] = useState(false);
-
-  useEffect(() => {
-    if (data.apiKeys) {
-      const xaiKey = data.apiKeys.find(key => key.key_name === 'XAI_API_KEY');
-      setXaiKeyValue(xaiKey?.key_value || '');
-
-      const twitterKeys = ['BEARER', 'CONSUMER_KEY', 'CONSUMER_SECRET', 'ACCESS_TOKEN', 'ACCESS_SECRET'];
-      const twitterValues = { ...twitterKeyValues };
-      twitterKeys.forEach(keyName => {
-        const key = data.apiKeys.find(k => k.key_name === keyName);
-        twitterValues[keyName] = key?.key_value || '';
-      });
-      setTwitterKeyValues(twitterValues);
-    }
-  }, [data.apiKeys]);
-
-  const handleAddFeed = () => {
-    if (newFeed.name && newFeed.url) {
-      onSendMessage({
-        type: 'add_feed',
-        payload: {
-          name: newFeed.name,
-          url: newFeed.url,
-          categories_uid: newFeed.categories_uid ? parseInt(newFeed.categories_uid) : null,
-          logo_url: newFeed.logo_url || null
-        }
-      });
-      setNewFeed({ name: '', url: '', categories_uid: '', logo_url: '' });
-    }
-  };
+  }>({ show: false, success: false, message: '' });
 
   const validateXaiKey = async (keyValue: string) => {
     setValidationInProgress(true);
@@ -81,33 +48,19 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
     // Wait a moment for the key to be saved, then validate
     setTimeout(async () => {
       try {
-        const response = await fetch('http://localhost:3001/api/check-xapi', {
-          method: 'GET',
-          headers: {
-            'Cache-Control': 'no-cache'
-          }
-        });
+        const response = await fetch('http://localhost:3001/api/check-xapi');
+        const result = await response.json();
         
-        if (response.ok) {
-          const result = await response.json();
-          setValidationModal({
-            isOpen: true,
-            isValid: result.valid,
-            message: result.message || (result.valid ? 'API key is valid' : 'API key is invalid')
-          });
-        } else {
-          setValidationModal({
-            isOpen: true,
-            isValid: false,
-            message: 'Failed to validate API key'
-          });
-        }
-      } catch (error) {
-        console.error('Validation error:', error);
         setValidationModal({
-          isOpen: true,
-          isValid: false,
-          message: 'Validation failed: ' + (error instanceof Error ? error.message : 'Unknown error')
+          show: true,
+          success: result.valid,
+          message: result.valid ? 'API key is valid!' : result.message || 'Invalid API key'
+        });
+      } catch (error) {
+        setValidationModal({
+          show: true,
+          success: false,
+          message: 'Failed to validate API key: ' + (error instanceof Error ? error.message : 'Unknown error')
         });
       } finally {
         setValidationInProgress(false);
@@ -115,126 +68,183 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
     }, 1000);
   };
 
+  const handleAddFeed = () => {
+    if (!newFeed.name || !newFeed.url) return;
+    
+    onSendMessage({
+      type: 'add_feed',
+      payload: {
+        name: newFeed.name,
+        url: newFeed.url,
+        categories_uid: newFeed.categories_uid ? parseInt(newFeed.categories_uid) : null,
+        logo_url: newFeed.logo_url || null
+      }
+    });
+    
+    setNewFeed({ name: '', url: '', categories_uid: '', logo_url: '' });
+  };
+
   const handleUpdateFeed = () => {
-    if (editingFeed) {
-      onSendMessage({
-        type: 'update_feed',
-        payload: {
-          uid: editingFeed.uid,
-          name: editingFeed.name,
-          url: editingFeed.url,
-          active: editingFeed.active,
-          categories_uid: editingFeed.categories_uid,
-          logo_url: editingFeed.logo_url
-        }
-      });
-      setEditingFeed(null);
-    }
+    if (!editingFeed) return;
+    
+    onSendMessage({
+      type: 'update_feed',
+      payload: {
+        uid: editingFeed.uid,
+        name: editingFeed.name,
+        url: editingFeed.url,
+        active: editingFeed.active,
+        categories_uid: editingFeed.categories_uid,
+        logo_url: editingFeed.logo_url
+      }
+    });
+    
+    setEditingFeed(null);
   };
 
   const handleDeleteFeed = (uid: number) => {
-    onSendMessage({ type: 'delete_feed', payload: { uid } });
+    onSendMessage({
+      type: 'delete_feed',
+      payload: { uid }
+    });
   };
 
   const handleAddCategory = () => {
-    if (newCategory) {
-      onSendMessage({ type: 'add_category', payload: { title: newCategory } });
-      setNewCategory('');
-    }
+    if (!newCategory) return;
+    
+    onSendMessage({
+      type: 'add_category',
+      payload: { title: newCategory }
+    });
+    
+    setNewCategory('');
   };
 
   const handleUpdateCategory = () => {
-    if (editingCategory) {
-      onSendMessage({
-        type: 'update_category',
-        payload: { uid: editingCategory.uid, title: editingCategory.title }
-      });
-      setEditingCategory(null);
-    }
+    if (!editingCategory) return;
+    
+    onSendMessage({
+      type: 'update_category',
+      payload: {
+        uid: editingCategory.uid,
+        title: editingCategory.title
+      }
+    });
+    
+    setEditingCategory(null);
   };
 
   const handleDeleteCategory = (uid: number) => {
-    onSendMessage({ type: 'delete_category', payload: { uid } });
+    onSendMessage({
+      type: 'delete_category',
+      payload: { uid }
+    });
+  };
+
+  const handleSaveApiKey = (keyName: string) => {
+    const keyValue = editingApiValues[keyName] || '';
+    
+    onSendMessage({
+      type: 'update_api_key',
+      payload: { keyName, keyValue }
+    });
+    
+    setEditingApiKey(null);
+    setEditingApiValues(prev => ({ ...prev, [keyName]: '' }));
+    
+    // Validate XAI API key after saving
+    if (keyName === 'XAI_API_KEY' && keyValue.trim()) {
+      validateXaiKey(keyValue);
+    }
+  };
+
+  const handleEditApiKey = (keyName: string, currentValue: string) => {
+    setEditingApiKey(keyName);
+    setEditingApiValues(prev => ({ ...prev, [keyName]: currentValue }));
+  };
+
+  const handleCancelApiKeyEdit = (keyName: string) => {
+    setEditingApiKey(null);
+    setEditingApiValues(prev => ({ ...prev, [keyName]: '' }));
+  };
+
+  const handleApiKeyChange = (keyName: string, value: string) => {
+    setEditingApiValues(prev => ({ ...prev, [keyName]: value }));
   };
 
   const handleAddReaction = () => {
-    if (newReaction.type && newReaction.prompt) {
-      onSendMessage({
-        type: 'add_reaction',
-        payload: { type: newReaction.type, prompt: newReaction.prompt }
-      });
-      setNewReaction({ type: '', prompt: '' });
-    }
+    if (!newReaction.type || !newReaction.prompt) return;
+    
+    onSendMessage({
+      type: 'add_reaction',
+      payload: {
+        type: newReaction.type,
+        prompt: newReaction.prompt
+      }
+    });
+    
+    setNewReaction({ type: '', prompt: '' });
   };
 
   const handleUpdateReaction = () => {
-    if (editingReaction) {
-      onSendMessage({
-        type: 'update_reaction',
-        payload: {
-          uid: editingReaction.uid,
-          type: editingReaction.type,
-          prompt: editingReaction.prompt
-        }
-      });
-      setEditingReaction(null);
-    }
+    if (!editingReaction) return;
+    
+    onSendMessage({
+      type: 'update_reaction',
+      payload: {
+        uid: editingReaction.uid,
+        type: editingReaction.type,
+        prompt: editingReaction.prompt
+      }
+    });
+    
+    setEditingReaction(null);
   };
 
   const handleDeleteReaction = (uid: number) => {
-    onSendMessage({ type: 'delete_reaction', payload: { uid } });
-  };
-
-  const handleSaveXaiKey = async () => {
-    // Save the key first
     onSendMessage({
-      type: 'update_api_key',
-      payload: { keyName: 'XAI_API_KEY', keyValue: xaiKeyValue }
+      type: 'delete_reaction',
+      payload: { uid }
     });
-
-    // Then validate it
-    const isValid = await validateXaiKey(xaiKeyValue);
-    
-    if (isValid) {
-      setEditingXaiKey(false);
-    }
-    // If invalid, keep editing mode so user can fix it
   };
 
-  const handleSaveTwitterKeys = () => {
-    Object.entries(twitterKeyValues).forEach(([keyName, keyValue]) => {
-      onSendMessage({
-        type: 'update_api_key',
-        payload: { keyName, keyValue }
-      });
+  const handlePurgeStories = (type: string, payload?: any) => {
+    const confirmMessage = {
+      'all': 'Are you sure you want to delete ALL stories? This cannot be undone.',
+      'category': 'Are you sure you want to delete all stories from this category?',
+      'old_stories': `Are you sure you want to delete all stories older than ${payload?.days} days?`,
+      'source': 'Are you sure you want to delete all stories from this source?'
+    }[type];
+
+    if (!confirm(confirmMessage)) return;
+
+    const messageType = {
+      'all': 'purge_all_stories',
+      'category': 'purge_category_stories',
+      'old_stories': 'purge_old_stories',
+      'source': 'purge_source_stories'
+    }[type];
+
+    onSendMessage({
+      type: messageType,
+      payload
     });
-    setEditingTwitterKeys(false);
   };
 
-  const handleCancelXaiEdit = () => {
-    const xaiKey = data.apiKeys.find(key => key.key_name === 'XAI_API_KEY');
-    setXaiKeyValue(xaiKey?.key_value || '');
-    setEditingXaiKey(false);
-  };
+  useEffect(() => {
+    setActiveTab(initialTab);
+  }, [initialTab]);
 
-  const handleCancelTwitterEdit = () => {
-    const twitterKeys = ['BEARER', 'CONSUMER_KEY', 'CONSUMER_SECRET', 'ACCESS_TOKEN', 'ACCESS_SECRET'];
-    const resetValues = { ...twitterKeyValues };
-    twitterKeys.forEach(keyName => {
-      const key = data.apiKeys.find(k => k.key_name === keyName);
-      resetValues[keyName] = key?.key_value || '';
-    });
-    setTwitterKeyValues(resetValues);
-    setEditingTwitterKeys(false);
-  };
+  if (!isOpen) return null;
 
   const tabs = [
-    { id: 'about', label: 'About', icon: Settings },
+    { id: 'about', label: 'About', icon: Info },
     { id: 'api', label: 'API Settings', icon: Key },
-    { id: 'feeds', label: 'RSS Feeds', icon: Rss },
-    { id: 'categories', label: 'Categories', icon: Hash },
+    { id: 'feeds', label: 'RSS Feeds', icon: Plus },
+    { id: 'categories', label: 'Categories', icon: Edit2 },
     { id: 'reactions', label: 'Reactions', icon: MessageSquare },
-    { id: 'purge', label: 'Purge Stories', icon: Trash2 }
+    { id: 'purge', label: 'Purge Stories', icon: Trash2 },
+    { id: 'database', label: 'Database', icon: Database }
   ];
 
   return (
@@ -246,40 +256,25 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
           <div className={`flex items-center justify-between p-6 border-b ${
             isDarkMode ? 'border-gray-700' : 'border-gray-200'
           }`}>
-            <div className="flex items-center space-x-3">
-              <h2 className={`text-xl font-semibold ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>
-                Settings
-              </h2>
-            </div>
-            <div className="flex items-center space-x-2">
-              <button
-                onClick={() => setIsDatabaseViewOpen(true)}
-                className={`inline-flex items-center px-3 py-2 border rounded-md text-sm font-medium transition-colors ${
-                  isDarkMode
-                    ? 'border-gray-600 text-gray-300 bg-gray-700 hover:bg-gray-600'
-                    : 'border-gray-300 text-gray-700 bg-white hover:bg-gray-50'
-                }`}
-              >
-                <Database className="w-4 h-4 mr-2" />
-                Database View
-              </button>
-              <button
-                onClick={onClose}
-                className={`p-1 transition-colors ${
-                  isDarkMode 
-                    ? 'text-gray-500 hover:text-gray-300' 
-                    : 'text-gray-400 hover:text-gray-600'
-                }`}
-              >
-                <X className="w-6 h-6" />
-              </button>
-            </div>
+            <h2 className={`text-xl font-semibold ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>
+              Settings
+            </h2>
+            <button
+              onClick={onClose}
+              className={`p-2 rounded-md transition-colors ${
+                isDarkMode 
+                  ? 'text-gray-400 hover:text-gray-200 hover:bg-gray-700' 
+                  : 'text-gray-500 hover:text-gray-700 hover:bg-gray-100'
+              }`}
+            >
+              <X className="w-5 h-5" />
+            </button>
           </div>
 
           <div className="flex h-[calc(90vh-8rem)]">
             {/* Sidebar */}
             <div className={`w-64 border-r ${
-              isDarkMode ? 'border-gray-700 bg-gray-900' : 'border-gray-200 bg-gray-50'
+              isDarkMode ? 'border-gray-700 bg-gray-750' : 'border-gray-200 bg-gray-50'
             }`}>
               <nav className="p-4 space-y-2">
                 {tabs.map((tab) => {
@@ -294,7 +289,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                             ? 'bg-blue-900/30 text-blue-400'
                             : 'bg-blue-50 text-blue-700'
                           : isDarkMode
-                            ? 'text-gray-300 hover:bg-gray-800'
+                            ? 'text-gray-300 hover:bg-gray-700'
                             : 'text-gray-700 hover:bg-gray-100'
                       }`}
                     >
@@ -310,58 +305,29 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
             <div className="flex-1 overflow-y-auto p-6">
               {activeTab === 'about' && (
                 <div>
-                  <div className="flex items-center justify-between mb-6">
-                    <h3 className={`text-lg font-semibold ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>
-                      About RSS Reader
-                    </h3>
-                    <button
-                      onClick={() => setIsDatabaseViewOpen(true)}
-                      className={`inline-flex items-center px-3 py-2 border rounded-md text-sm font-medium transition-colors ${
-                        isDarkMode
-                          ? 'border-gray-600 text-gray-300 bg-gray-700 hover:bg-gray-600'
-                          : 'border-gray-300 text-gray-700 bg-white hover:bg-gray-50'
-                      }`}
-                    >
-                      <Database className="w-4 h-4 mr-2" />
-                      Database View
-                    </button>
-                  </div>
-                  
-                  <div className="space-y-4">
-                    <div>
-                      <h4 className={`font-medium mb-2 ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>
-                        Version
-                      </h4>
-                      <p className={`${isDarkMode ? 'text-gray-300' : 'text-gray-600'}`}>
-                        RSS Reader v0.1.5
-                      </p>
-                    </div>
-                    
-                    <div>
-                      <h4 className={`font-medium mb-2 ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>
-                        Statistics
-                      </h4>
-                      <div className="grid grid-cols-2 gap-4">
-                        <div className={`p-3 rounded-lg ${
-                          isDarkMode ? 'bg-gray-700' : 'bg-gray-100'
-                        }`}>
-                          <p className={`text-sm ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>
-                            Total Feeds
-                          </p>
-                          <p className={`text-xl font-semibold ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>
-                            {data.feeds?.length || 0}
-                          </p>
-                        </div>
-                        <div className={`p-3 rounded-lg ${
-                          isDarkMode ? 'bg-gray-700' : 'bg-gray-100'
-                        }`}>
-                          <p className={`text-sm ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>
-                            Total Stories
-                          </p>
-                          <p className={`text-xl font-semibold ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>
-                            {data.stories?.length || 0}
-                          </p>
-                        </div>
+                  <h3 className={`text-lg font-semibold mb-4 ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>
+                    About RSS Reader
+                  </h3>
+                  <div className={`space-y-4 ${isDarkMode ? 'text-gray-300' : 'text-gray-700'}`}>
+                    <p>
+                      A modern RSS reader and news curation platform built with React, Node.js, and SQLite.
+                    </p>
+                    <div className="grid grid-cols-2 gap-4">
+                      <div className={`p-4 rounded-lg ${isDarkMode ? 'bg-gray-700' : 'bg-gray-100'}`}>
+                        <h4 className="font-medium mb-2">Total Feeds</h4>
+                        <p className="text-2xl font-bold">{data.feeds?.length || 0}</p>
+                      </div>
+                      <div className={`p-4 rounded-lg ${isDarkMode ? 'bg-gray-700' : 'bg-gray-100'}`}>
+                        <h4 className="font-medium mb-2">Total Stories</h4>
+                        <p className="text-2xl font-bold">{data.stories?.length || 0}</p>
+                      </div>
+                      <div className={`p-4 rounded-lg ${isDarkMode ? 'bg-gray-700' : 'bg-gray-100'}`}>
+                        <h4 className="font-medium mb-2">Categories</h4>
+                        <p className="text-2xl font-bold">{data.categories?.length || 0}</p>
+                      </div>
+                      <div className={`p-4 rounded-lg ${isDarkMode ? 'bg-gray-700' : 'bg-gray-100'}`}>
+                        <h4 className="font-medium mb-2">Version</h4>
+                        <p className="text-2xl font-bold">1.0.0</p>
                       </div>
                     </div>
                   </div>
@@ -369,171 +335,31 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
               )}
 
               {activeTab === 'api' && (
-                <div className="space-y-8">
-                  <h3 className={`text-lg font-semibold ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>
-                    API Configuration
+                <div>
+                  <h3 className={`text-lg font-semibold mb-4 ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>
+                    API Settings
                   </h3>
-
-                  {/* XAI API Configuration */}
-                  <div className={`border rounded-lg p-6 ${
-                    isDarkMode ? 'border-gray-600 bg-gray-700' : 'border-gray-300 bg-gray-50'
-                  }`}>
-                    <div className="flex items-center justify-between mb-4">
-                      <div>
-                        <h4 className={`text-lg font-medium ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>
-                          XAI API Configuration
-                        </h4>
-                        <p className={`text-sm ${isDarkMode ? 'text-gray-400' : 'text-gray-600'}`}>
-                          Used for AI-powered content generation and analysis
-                        </p>
-                      </div>
-                      {!editingXaiKey && (
-                        <button
-                          onClick={() => setEditingXaiKey(true)}
-                          className={`inline-flex items-center px-3 py-2 border rounded-md text-sm font-medium transition-colors ${
-                            isDarkMode
-                              ? 'border-gray-600 text-gray-300 bg-gray-800 hover:bg-gray-600'
-                              : 'border-gray-300 text-gray-700 bg-white hover:bg-gray-50'
-                          }`}
-                        >
-                          <Edit2 className="w-4 h-4 mr-2" />
-                          Edit
-                        </button>
-                      )}
-                    </div>
-
-                    <div className="space-y-4">
-                      <div>
-                        <label className={`block text-sm font-medium mb-2 ${
-                          isDarkMode ? 'text-gray-300' : 'text-gray-700'
-                        }`}>
-                          XAI API Key
-                        </label>
-                        <div className="flex items-center space-x-3">
-                          <input
-                            type={editingXaiKey ? "text" : "password"}
-                            value={xaiKeyValue}
-                            onChange={(e) => setXaiKeyValue(e.target.value)}
-                            placeholder="Enter your XAI API key"
-                            className={`flex-1 px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 ${
-                              isDarkMode
-                                ? 'border-gray-600 bg-gray-800 text-white placeholder-gray-400'
-                                : 'border-gray-300 bg-white text-gray-900'
-                            }`}
-                            readOnly={!editingXaiKey}
-                          />
-                          
-                          {editingXaiKey && (
-                            <div className="flex space-x-2">
-                              <button
-                                onClick={handleSaveXaiKey}
-                                disabled={validationInProgress}
-                                className="inline-flex items-center px-3 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 transition-colors"
-                              >
-                                <Save className="w-4 h-4 mr-1" />
-                                {validationInProgress ? 'Testing...' : 'Save & Test'}
-                              </button>
-                              <button
-                                onClick={handleCancelXaiEdit}
-                                className={`px-3 py-2 border rounded-md transition-colors ${
-                                  isDarkMode
-                                    ? 'border-gray-600 text-gray-300 hover:bg-gray-600'
-                                    : 'border-gray-300 text-gray-700 hover:bg-gray-50'
-                                }`}
-                              >
-                                Cancel
-                              </button>
-                            </div>
-                          )}
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Twitter API Configuration */}
-                  <div className={`border rounded-lg p-6 ${
-                    isDarkMode ? 'border-gray-600 bg-gray-700' : 'border-gray-300 bg-gray-50'
-                  }`}>
-                    <div className="flex items-center justify-between mb-4">
-                      <div>
-                        <h4 className={`text-lg font-medium flex items-center ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>
-                          <Twitter className="w-5 h-5 mr-2" />
-                          Twitter/X API Configuration
-                        </h4>
-                        <p className={`text-sm ${isDarkMode ? 'text-gray-400' : 'text-gray-600'}`}>
-                          Required for social media integration and publishing
-                        </p>
-                      </div>
-                      {!editingTwitterKeys && (
-                        <button
-                          onClick={() => setEditingTwitterKeys(true)}
-                          className={`inline-flex items-center px-3 py-2 border rounded-md text-sm font-medium transition-colors ${
-                            isDarkMode
-                              ? 'border-gray-600 text-gray-300 bg-gray-800 hover:bg-gray-600'
-                              : 'border-gray-300 text-gray-700 bg-white hover:bg-gray-50'
-                          }`}
-                        >
-                          <Edit2 className="w-4 h-4 mr-2" />
-                          Edit
-                        </button>
-                      )}
-                    </div>
-
-                    <div className="space-y-4">
-                      {Object.entries(twitterKeyValues).map(([keyName, keyValue]) => (
-                        <div key={keyName}>
-                          <label className={`block text-sm font-medium mb-2 ${
-                            isDarkMode ? 'text-gray-300' : 'text-gray-700'
-                          }`}>
-                            {keyName.replace(/_/g, ' ')}
-                          </label>
-                          <input
-                            type={editingTwitterKeys ? "text" : "password"}
-                            value={keyValue}
-                            onChange={(e) => setTwitterKeyValues(prev => ({
-                              ...prev,
-                              [keyName]: e.target.value
-                            }))}
-                            placeholder={`Enter your ${keyName.replace(/_/g, ' ').toLowerCase()}`}
-                            className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 ${
-                              isDarkMode
-                                ? 'border-gray-600 bg-gray-800 text-white placeholder-gray-400'
-                                : 'border-gray-300 bg-white text-gray-900'
-                            }`}
-                            readOnly={!editingTwitterKeys}
-                          />
-                        </div>
-                      ))}
-
-                      {editingTwitterKeys && (
-                        <div className="flex justify-end space-x-3 pt-4">
-                          <button
-                            onClick={handleCancelTwitterEdit}
-                            className={`px-4 py-2 border rounded-md transition-colors ${
-                              isDarkMode
-                                ? 'border-gray-600 text-gray-300 hover:bg-gray-600'
-                                : 'border-gray-300 text-gray-700 hover:bg-gray-50'
-                            }`}
-                          >
-                            Cancel
-                          </button>
-                          <button
-                            onClick={handleSaveTwitterKeys}
-                            className="inline-flex items-center px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 transition-colors"
-                          >
-                            <Save className="w-4 h-4 mr-2" />
-                            Save All
-                          </button>
-                        </div>
-                      )}
-                    </div>
+                  <div className="space-y-4">
+                    {data.apiKeys?.map((apiKey: any) => (
+                      <ApiKeyItem
+                        key={apiKey.key_name}
+                        apiKey={apiKey}
+                        isDarkMode={isDarkMode}
+                        isEditing={editingApiKey === apiKey.key_name}
+                        editingValue={editingApiValues[apiKey.key_name] || ''}
+                        onEdit={handleEditApiKey}
+                        onSave={handleSaveApiKey}
+                        onCancel={handleCancelApiKeyEdit}
+                        onChange={handleApiKeyChange}
+                      />
+                    ))}
                   </div>
                 </div>
               )}
 
               {activeTab === 'feeds' && (
                 <div>
-                  <h3 className={`text-lg font-semibold mb-6 ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>
+                  <h3 className={`text-lg font-semibold mb-4 ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>
                     RSS Feeds
                   </h3>
                   
@@ -541,10 +367,10 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                   <div className={`border rounded-lg p-4 mb-6 ${
                     isDarkMode ? 'border-gray-600 bg-gray-700' : 'border-gray-300 bg-gray-50'
                   }`}>
-                    <h4 className={`font-medium mb-4 ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>
+                    <h4 className={`font-medium mb-3 ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>
                       Add New Feed
                     </h4>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="grid grid-cols-2 gap-4 mb-4">
                       <input
                         type="text"
                         placeholder="Feed Name"
@@ -577,7 +403,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                         }`}
                       >
                         <option value="">Select Category</option>
-                        {data.categories?.map((category) => (
+                        {data.categories?.map((category: any) => (
                           <option key={category.uid} value={category.uid}>
                             {category.title}
                           </option>
@@ -597,7 +423,8 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                     </div>
                     <button
                       onClick={handleAddFeed}
-                      className="mt-4 inline-flex items-center px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors"
+                      disabled={!newFeed.name || !newFeed.url}
+                      className="inline-flex items-center px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
                     >
                       <Plus className="w-4 h-4 mr-2" />
                       Add Feed
@@ -606,13 +433,13 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
 
                   {/* Existing feeds */}
                   <div className="space-y-4">
-                    {data.feeds?.map((feed) => (
+                    {data.feeds?.map((feed: any) => (
                       <div key={feed.uid} className={`border rounded-lg p-4 ${
-                        isDarkMode ? 'border-gray-600 bg-gray-700' : 'border-gray-300 bg-gray-50'
+                        isDarkMode ? 'border-gray-600 bg-gray-700' : 'border-gray-300 bg-white'
                       }`}>
                         {editingFeed?.uid === feed.uid ? (
-                          <div className="space-y-4">
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                          <div className="space-y-3">
+                            <div className="grid grid-cols-2 gap-4">
                               <input
                                 type="text"
                                 value={editingFeed.name}
@@ -635,7 +462,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                               />
                               <select
                                 value={editingFeed.categories_uid || ''}
-                                onChange={(e) => setEditingFeed({ ...editingFeed, categories_uid: e.target.value ? parseInt(e.target.value) : null })}
+                                onChange={(e) => setEditingFeed({ ...editingFeed, categories_uid: parseInt(e.target.value) || null })}
                                 className={`px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 ${
                                   isDarkMode
                                     ? 'border-gray-600 bg-gray-800 text-white'
@@ -643,7 +470,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                                 }`}
                               >
                                 <option value="">Select Category</option>
-                                {data.categories?.map((category) => (
+                                {data.categories?.map((category: any) => (
                                   <option key={category.uid} value={category.uid}>
                                     {category.title}
                                   </option>
@@ -661,7 +488,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                                 }`}
                               />
                             </div>
-                            <div className="flex items-center space-x-4">
+                            <div className="flex items-center space-x-3">
                               <label className="flex items-center">
                                 <input
                                   type="checkbox"
@@ -669,17 +496,15 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                                   onChange={(e) => setEditingFeed({ ...editingFeed, active: e.target.checked ? 1 : 0 })}
                                   className="mr-2"
                                 />
-                                <span className={`text-sm ${isDarkMode ? 'text-gray-300' : 'text-gray-700'}`}>
-                                  Active
-                                </span>
+                                <span className={isDarkMode ? 'text-gray-300' : 'text-gray-700'}>Active</span>
                               </label>
                             </div>
-                            <div className="flex space-x-3">
+                            <div className="flex space-x-2">
                               <button
                                 onClick={handleUpdateFeed}
                                 className="inline-flex items-center px-3 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 transition-colors"
                               >
-                                <Save className="w-4 h-4 mr-2" />
+                                <Save className="w-4 h-4 mr-1" />
                                 Save
                               </button>
                               <button
@@ -700,11 +525,11 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                               <h4 className={`font-medium ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>
                                 {feed.name}
                               </h4>
-                              <p className={`text-sm ${isDarkMode ? 'text-gray-400' : 'text-gray-600'}`}>
+                              <p className={`text-sm ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>
                                 {feed.url}
                               </p>
-                              <p className={`text-sm ${isDarkMode ? 'text-gray-400' : 'text-gray-600'}`}>
-                                Category: {feed.category_name || 'None'} | Status: {feed.active ? 'Active' : 'Inactive'}
+                              <p className={`text-sm ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>
+                                Category: {feed.category_name || 'None'} • Status: {feed.active ? 'Active' : 'Inactive'}
                               </p>
                             </div>
                             <div className="flex space-x-2">
@@ -739,7 +564,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
 
               {activeTab === 'categories' && (
                 <div>
-                  <h3 className={`text-lg font-semibold mb-6 ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>
+                  <h3 className={`text-lg font-semibold mb-4 ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>
                     Categories
                   </h3>
                   
@@ -747,7 +572,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                   <div className={`border rounded-lg p-4 mb-6 ${
                     isDarkMode ? 'border-gray-600 bg-gray-700' : 'border-gray-300 bg-gray-50'
                   }`}>
-                    <h4 className={`font-medium mb-4 ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>
+                    <h4 className={`font-medium mb-3 ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>
                       Add New Category
                     </h4>
                     <div className="flex space-x-3">
@@ -764,19 +589,20 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                       />
                       <button
                         onClick={handleAddCategory}
-                        className="inline-flex items-center px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors"
+                        disabled={!newCategory}
+                        className="inline-flex items-center px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
                       >
                         <Plus className="w-4 h-4 mr-2" />
-                        Add
+                        Add Category
                       </button>
                     </div>
                   </div>
 
                   {/* Existing categories */}
                   <div className="space-y-4">
-                    {data.categories?.map((category) => (
+                    {data.categories?.map((category: any) => (
                       <div key={category.uid} className={`border rounded-lg p-4 ${
-                        isDarkMode ? 'border-gray-600 bg-gray-700' : 'border-gray-300 bg-gray-50'
+                        isDarkMode ? 'border-gray-600 bg-gray-700' : 'border-gray-300 bg-white'
                       }`}>
                         {editingCategory?.uid === category.uid ? (
                           <div className="flex space-x-3">
@@ -794,7 +620,8 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                               onClick={handleUpdateCategory}
                               className="inline-flex items-center px-3 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 transition-colors"
                             >
-                              <Save className="w-4 h-4" />
+                              <Save className="w-4 h-4 mr-1" />
+                              Save
                             </button>
                             <button
                               onClick={() => setEditingCategory(null)}
@@ -844,7 +671,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
 
               {activeTab === 'reactions' && (
                 <div>
-                  <h3 className={`text-lg font-semibold mb-6 ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>
+                  <h3 className={`text-lg font-semibold mb-4 ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>
                     Reaction Templates
                   </h3>
                   
@@ -852,13 +679,13 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                   <div className={`border rounded-lg p-4 mb-6 ${
                     isDarkMode ? 'border-gray-600 bg-gray-700' : 'border-gray-300 bg-gray-50'
                   }`}>
-                    <h4 className={`font-medium mb-4 ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>
+                    <h4 className={`font-medium mb-3 ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>
                       Add New Reaction
                     </h4>
-                    <div className="space-y-4">
+                    <div className="space-y-3">
                       <input
                         type="text"
-                        placeholder="Reaction Type (e.g., 'sarcastic', 'excited')"
+                        placeholder="Reaction Type (e.g., '10. excited')"
                         value={newReaction.type}
                         onChange={(e) => setNewReaction({ ...newReaction, type: e.target.value })}
                         className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 ${
@@ -880,7 +707,8 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                       />
                       <button
                         onClick={handleAddReaction}
-                        className="inline-flex items-center px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors"
+                        disabled={!newReaction.type || !newReaction.prompt}
+                        className="inline-flex items-center px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
                       >
                         <Plus className="w-4 h-4 mr-2" />
                         Add Reaction
@@ -890,12 +718,12 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
 
                   {/* Existing reactions */}
                   <div className="space-y-4">
-                    {data.reactions?.map((reaction) => (
+                    {data.reactions?.map((reaction: any) => (
                       <div key={reaction.uid} className={`border rounded-lg p-4 ${
-                        isDarkMode ? 'border-gray-600 bg-gray-700' : 'border-gray-300 bg-gray-50'
+                        isDarkMode ? 'border-gray-600 bg-gray-700' : 'border-gray-300 bg-white'
                       }`}>
                         {editingReaction?.uid === reaction.uid ? (
-                          <div className="space-y-4">
+                          <div className="space-y-3">
                             <input
                               type="text"
                               value={editingReaction.type}
@@ -916,12 +744,12 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                                   : 'border-gray-300 bg-white text-gray-900'
                               }`}
                             />
-                            <div className="flex space-x-3">
+                            <div className="flex space-x-2">
                               <button
                                 onClick={handleUpdateReaction}
                                 className="inline-flex items-center px-3 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 transition-colors"
                               >
-                                <Save className="w-4 h-4 mr-2" />
+                                <Save className="w-4 h-4 mr-1" />
                                 Save
                               </button>
                               <button
@@ -937,37 +765,37 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                             </div>
                           </div>
                         ) : (
-                          <div className="flex items-start justify-between">
-                            <div className="flex-1">
-                              <h4 className={`font-medium mb-2 ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>
+                          <div>
+                            <div className="flex items-center justify-between mb-2">
+                              <h4 className={`font-medium ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>
                                 {reaction.type}
                               </h4>
-                              <p className={`text-sm ${isDarkMode ? 'text-gray-400' : 'text-gray-600'}`}>
-                                {reaction.prompt}
-                              </p>
+                              <div className="flex space-x-2">
+                                <button
+                                  onClick={() => setEditingReaction(reaction)}
+                                  className={`p-2 rounded-md transition-colors ${
+                                    isDarkMode
+                                      ? 'text-gray-400 hover:text-gray-300 hover:bg-gray-600'
+                                      : 'text-gray-500 hover:text-gray-700 hover:bg-gray-100'
+                                  }`}
+                                >
+                                  <Edit2 className="w-4 h-4" />
+                                </button>
+                                <button
+                                  onClick={() => handleDeleteReaction(reaction.uid)}
+                                  className={`p-2 rounded-md transition-colors ${
+                                    isDarkMode
+                                      ? 'text-red-400 hover:text-red-300 hover:bg-red-900/20'
+                                      : 'text-red-500 hover:text-red-700 hover:bg-red-50'
+                                  }`}
+                                >
+                                  <Trash2 className="w-4 h-4" />
+                                </button>
+                              </div>
                             </div>
-                            <div className="flex space-x-2 ml-4">
-                              <button
-                                onClick={() => setEditingReaction(reaction)}
-                                className={`p-2 rounded-md transition-colors ${
-                                  isDarkMode
-                                    ? 'text-gray-400 hover:text-gray-300 hover:bg-gray-600'
-                                    : 'text-gray-500 hover:text-gray-700 hover:bg-gray-100'
-                                }`}
-                              >
-                                <Edit2 className="w-4 h-4" />
-                              </button>
-                              <button
-                                onClick={() => handleDeleteReaction(reaction.uid)}
-                                className={`p-2 rounded-md transition-colors ${
-                                  isDarkMode
-                                    ? 'text-red-400 hover:text-red-300 hover:bg-red-900/20'
-                                    : 'text-red-500 hover:text-red-700 hover:bg-red-50'
-                                }`}
-                              >
-                                <Trash2 className="w-4 h-4" />
-                              </button>
-                            </div>
+                            <p className={`text-sm ${isDarkMode ? 'text-gray-400' : 'text-gray-600'}`}>
+                              {reaction.prompt}
+                            </p>
                           </div>
                         )}
                       </div>
@@ -978,93 +806,140 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
 
               {activeTab === 'purge' && (
                 <div>
-                  <h3 className={`text-lg font-semibold mb-6 ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>
+                  <h3 className={`text-lg font-semibold mb-4 ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>
                     Purge Stories
                   </h3>
-                  
-                  {/* Database Import/Export Section */}
-                  <div className={`border rounded-lg p-6 mb-6 ${
-                    isDarkMode ? 'border-gray-600 bg-gray-700' : 'border-gray-300 bg-gray-50'
+                  <div className={`border rounded-md p-4 mb-6 ${
+                    isDarkMode 
+                      ? 'bg-red-900/20 border-red-800 text-red-300' 
+                      : 'bg-red-50 border-red-200 text-red-800'
                   }`}>
-                    <h4 className={`text-lg font-medium mb-4 ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>
-                      Database Management
-                    </h4>
-                    <p className={`text-sm mb-4 ${isDarkMode ? 'text-gray-400' : 'text-gray-600'}`}>
-                      Export your database for backup or import a previously exported database.
-                    </p>
-                    <div className="flex space-x-3">
-                      <button
-                        onClick={() => setIsDatabaseViewOpen(true)}
-                        className={`inline-flex items-center px-4 py-2 border rounded-md text-sm font-medium transition-colors ${
-                          isDarkMode
-                            ? 'border-gray-600 text-gray-300 bg-gray-800 hover:bg-gray-600'
-                            : 'border-gray-300 text-gray-700 bg-white hover:bg-gray-50'
-                        }`}
-                      >
-                        <Database className="w-4 h-4 mr-2" />
-                        Database View & Import/Export
-                      </button>
+                    <div className="flex items-center">
+                      <AlertTriangle className="w-5 h-5 mr-2" />
+                      <p className="font-medium">Warning: These actions cannot be undone!</p>
                     </div>
                   </div>
-
-                  {/* Purge All Stories */}
-                  <div className={`border rounded-lg p-6 mb-6 ${
-                    isDarkMode ? 'border-gray-600 bg-gray-700' : 'border-gray-300 bg-gray-50'
-                  }`}>
-                    <h4 className={`text-lg font-medium mb-4 ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>
-                      Purge All Stories
-                    </h4>
-                    <p className={`text-sm mb-4 ${isDarkMode ? 'text-gray-400' : 'text-gray-600'}`}>
-                      This will permanently delete all stories from the database. This action cannot be undone.
-                    </p>
-                    <button
-                      onClick={() => onSendMessage({ type: 'purge_all_stories' })}
-                      className="inline-flex items-center px-4 py-2 bg-red-600 text-white rounded-md hover:bg-red-700 transition-colors"
-                    >
-                      <Trash2 className="w-4 h-4 mr-2" />
-                      Purge All Stories
-                    </button>
-                  </div>
-
-                  {/* Purge Old Stories */}
-                  <div className={`border rounded-lg p-6 ${
-                    isDarkMode ? 'border-gray-600 bg-gray-700' : 'border-gray-300 bg-gray-50'
-                  }`}>
-                    <h4 className={`text-lg font-medium mb-4 ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>
-                      Purge Old Stories
-                    </h4>
-                    <p className={`text-sm mb-4 ${isDarkMode ? 'text-gray-400' : 'text-gray-600'}`}>
-                      Delete stories older than a specified number of days.
-                    </p>
-                    <div className="flex space-x-3">
-                      <input
-                        type="number"
-                        placeholder="Days"
-                        min="1"
-                        className={`px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 w-24 ${
-                          isDarkMode
-                            ? 'border-gray-600 bg-gray-800 text-white placeholder-gray-400'
-                            : 'border-gray-300 bg-white text-gray-900'
-                        }`}
-                        onChange={(e) => {
-                          const days = parseInt(e.target.value);
-                          if (days > 0) {
-                            e.target.dataset.days = days.toString();
-                          }
-                        }}
-                      />
+                  
+                  <div className="space-y-4">
+                    <div className={`border rounded-lg p-4 ${
+                      isDarkMode ? 'border-gray-600 bg-gray-700' : 'border-gray-300 bg-white'
+                    }`}>
+                      <h4 className={`font-medium mb-2 ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>
+                        Purge All Stories
+                      </h4>
+                      <p className={`text-sm mb-3 ${isDarkMode ? 'text-gray-400' : 'text-gray-600'}`}>
+                        Delete all stories from the database
+                      </p>
                       <button
-                        onClick={(e) => {
-                          const input = e.currentTarget.previousElementSibling as HTMLInputElement;
-                          const days = parseInt(input.value);
-                          if (days > 0) {
-                            onSendMessage({ type: 'purge_old_stories', payload: { days } });
-                          }
-                        }}
-                        className="inline-flex items-center px-4 py-2 bg-orange-600 text-white rounded-md hover:bg-orange-700 transition-colors"
+                        onClick={() => handlePurgeStories('all')}
+                        className="px-4 py-2 bg-red-600 text-white rounded-md hover:bg-red-700 transition-colors"
                       >
-                        <Trash2 className="w-4 h-4 mr-2" />
+                        Purge All Stories
+                      </button>
+                    </div>
+
+                    <div className={`border rounded-lg p-4 ${
+                      isDarkMode ? 'border-gray-600 bg-gray-700' : 'border-gray-300 bg-white'
+                    }`}>
+                      <h4 className={`font-medium mb-2 ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>
+                        Purge by Category
+                      </h4>
+                      <p className={`text-sm mb-3 ${isDarkMode ? 'text-gray-400' : 'text-gray-600'}`}>
+                        Delete all stories from a specific category
+                      </p>
+                      <div className="flex space-x-3">
+                        <select
+                          className={`flex-1 px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 ${
+                            isDarkMode
+                              ? 'border-gray-600 bg-gray-800 text-white'
+                              : 'border-gray-300 bg-white text-gray-900'
+                          }`}
+                          onChange={(e) => {
+                            if (e.target.value) {
+                              handlePurgeStories('category', { categories_uid: parseInt(e.target.value) });
+                              e.target.value = '';
+                            }
+                          }}
+                        >
+                          <option value="">Select Category to Purge</option>
+                          {data.categories?.map((category: any) => (
+                            <option key={category.uid} value={category.uid}>
+                              {category.title}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+                    </div>
+
+                    <div className={`border rounded-lg p-4 ${
+                      isDarkMode ? 'border-gray-600 bg-gray-700' : 'border-gray-300 bg-white'
+                    }`}>
+                      <h4 className={`font-medium mb-2 ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>
                         Purge Old Stories
+                      </h4>
+                      <p className={`text-sm mb-3 ${isDarkMode ? 'text-gray-400' : 'text-gray-600'}`}>
+                        Delete stories older than a specified number of days
+                      </p>
+                      <div className="flex space-x-3">
+                        <input
+                          type="number"
+                          placeholder="Days"
+                          min="1"
+                          className={`w-24 px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 ${
+                            isDarkMode
+                              ? 'border-gray-600 bg-gray-800 text-white placeholder-gray-400'
+                              : 'border-gray-300 bg-white text-gray-900'
+                          }`}
+                          onKeyPress={(e) => {
+                            if (e.key === 'Enter') {
+                              const days = parseInt((e.target as HTMLInputElement).value);
+                              if (days > 0) {
+                                handlePurgeStories('old_stories', { days });
+                                (e.target as HTMLInputElement).value = '';
+                              }
+                            }
+                          }}
+                        />
+                        <button
+                          onClick={(e) => {
+                            const input = (e.target as HTMLElement).previousElementSibling as HTMLInputElement;
+                            const days = parseInt(input.value);
+                            if (days > 0) {
+                              handlePurgeStories('old_stories', { days });
+                              input.value = '';
+                            }
+                          }}
+                          className="px-4 py-2 bg-red-600 text-white rounded-md hover:bg-red-700 transition-colors"
+                        >
+                          Purge Old Stories
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {activeTab === 'database' && (
+                <div>
+                  <h3 className={`text-lg font-semibold mb-4 ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>
+                    Database Management
+                  </h3>
+                  <div className="space-y-4">
+                    <div className={`border rounded-lg p-4 ${
+                      isDarkMode ? 'border-gray-600 bg-gray-700' : 'border-gray-300 bg-white'
+                    }`}>
+                      <h4 className={`font-medium mb-2 ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>
+                        Database Viewer
+                      </h4>
+                      <p className={`text-sm mb-3 ${isDarkMode ? 'text-gray-400' : 'text-gray-600'}`}>
+                        View, export, and import database contents
+                      </p>
+                      <button
+                        onClick={() => setDbModalOpen(true)}
+                        className="inline-flex items-center px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors"
+                      >
+                        <Database className="w-4 h-4 mr-2" />
+                        Open Database Viewer
                       </button>
                     </div>
                   </div>
@@ -1076,7 +951,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
       </div>
 
       {/* Validation Modal */}
-      {validationModal.isOpen && (
+      {validationModal.show && (
         <div className="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center p-4 z-[60]">
           <div className={`rounded-lg shadow-xl max-w-md w-full ${
             isDarkMode ? 'bg-gray-800' : 'bg-white'
@@ -1085,38 +960,36 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
               isDarkMode ? 'border-gray-700' : 'border-gray-200'
             }`}>
               <div className="flex items-center space-x-3">
-                {validationModal.isValid ? (
+                {validationModal.success ? (
                   <CheckCircle className="w-6 h-6 text-green-500" />
                 ) : (
-                  <AlertCircle className="w-6 h-6 text-red-500" />
+                  <XCircle className="w-6 h-6 text-red-500" />
                 )}
                 <h3 className={`text-lg font-semibold ${
                   isDarkMode ? 'text-white' : 'text-gray-900'
                 }`}>
-                  {validationModal.isValid ? 'Validation Successful' : 'Validation Failed'}
+                  API Key Validation
                 </h3>
               </div>
             </div>
 
             <div className="p-6">
-              <p className={`mb-6 ${
+              <p className={`mb-4 ${
                 isDarkMode ? 'text-gray-300' : 'text-gray-700'
               }`}>
                 {validationModal.message}
               </p>
-
+              
               <div className="flex justify-end">
                 <button
-                  onClick={() => setValidationModal({ isOpen: false, isValid: false, message: '' })}
-                  className={`px-4 py-2 rounded-md transition-colors ${
-                    validationModal.isValid
-                      ? 'bg-green-600 text-white hover:bg-green-700'
-                      : isDarkMode
-                        ? 'border border-gray-600 text-gray-300 hover:bg-gray-700'
-                        : 'border border-gray-300 text-gray-700 hover:bg-gray-50'
+                  onClick={() => setValidationModal({ show: false, success: false, message: '' })}
+                  className={`px-4 py-2 border rounded-md transition-colors ${
+                    isDarkMode
+                      ? 'border-gray-600 text-gray-300 hover:bg-gray-700'
+                      : 'border-gray-300 text-gray-700 hover:bg-gray-50'
                   }`}
                 >
-                  OK
+                  Close
                 </button>
               </div>
             </div>
@@ -1124,12 +997,30 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
         </div>
       )}
 
-      {/* Database View Modal */}
+      {/* Database Modal */}
       <DatabaseViewModal
-        isOpen={isDatabaseViewOpen}
-        onClose={() => setIsDatabaseViewOpen(false)}
+        isOpen={dbModalOpen}
+        onClose={() => setDbModalOpen(false)}
         isDarkMode={isDarkMode}
       />
+
+      {/* Validation Progress Overlay */}
+      {validationInProgress && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[70]">
+          <div className={`rounded-lg p-6 ${
+            isDarkMode ? 'bg-gray-800' : 'bg-white'
+          }`}>
+            <div className="flex items-center space-x-3">
+              <div className="animate-spin">
+                <div className="w-6 h-6 border-2 border-blue-500 border-t-transparent rounded-full"></div>
+              </div>
+              <span className={isDarkMode ? 'text-white' : 'text-gray-900'}>
+                Validating API key...
+              </span>
+            </div>
+          </div>
+        </div>
+      )}
     </>
   );
 };
