@@ -966,6 +966,149 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                   </div>
                 </div>
               )}
+
+              {activeTab === 'purge' && (
+                <div>
+                  <h3 className={`text-lg font-semibold mb-6 ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>
+                    Purge Stories
+                  </h3>
+                  
+                  <div className="space-y-6">
+                    {/* Purge All Stories */}
+                    <div className={`border rounded-lg p-4 ${
+                      isDarkMode ? 'border-red-600 bg-red-900/20' : 'border-red-300 bg-red-50'
+                    }`}>
+                      <h4 className={`font-medium mb-2 ${isDarkMode ? 'text-red-300' : 'text-red-700'}`}>
+                        Purge All Stories
+                      </h4>
+                      <p className={`text-sm mb-4 ${isDarkMode ? 'text-red-400' : 'text-red-600'}`}>
+                        This will permanently delete ALL stories from the database. This action cannot be undone.
+                      </p>
+                      <button
+                        onClick={() => {
+                          if (confirm('Are you sure you want to delete ALL stories? This cannot be undone.')) {
+                            onSendMessage({ type: 'purge_all_stories' });
+                          }
+                        }}
+                        className="px-4 py-2 bg-red-600 text-white rounded-md hover:bg-red-700 transition-colors"
+                      >
+                        Purge All Stories
+                      </button>
+                    </div>
+
+                    {/* Purge by Category */}
+                    <div className={`border rounded-lg p-4 ${
+                      isDarkMode ? 'border-gray-600 bg-gray-700' : 'border-gray-300 bg-gray-50'
+                    }`}>
+                      <h4 className={`font-medium mb-2 ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>
+                        Purge Stories by Category
+                      </h4>
+                      <p className={`text-sm mb-4 ${isDarkMode ? 'text-gray-400' : 'text-gray-600'}`}>
+                        Delete all stories from a specific category.
+                      </p>
+                      <div className="flex space-x-3">
+                        <select
+                          className={`flex-1 px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 ${
+                            isDarkMode
+                              ? 'border-gray-600 bg-gray-800 text-white'
+                              : 'border-gray-300 bg-white text-gray-900'
+                          }`}
+                          onChange={(e) => {
+                            if (e.target.value && confirm(`Are you sure you want to delete all stories from this category? This cannot be undone.`)) {
+                              onSendMessage({ 
+                                type: 'purge_category_stories', 
+                                payload: { categories_uid: parseInt(e.target.value) } 
+                              });
+                              e.target.value = '';
+                            }
+                          }}
+                        >
+                          <option value="">Select Category to Purge</option>
+                          {data.categories?.map((category) => (
+                            <option key={category.uid} value={category.uid}>
+                              {category.title}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+                    </div>
+
+                    {/* Purge Old Stories */}
+                    <div className={`border rounded-lg p-4 ${
+                      isDarkMode ? 'border-gray-600 bg-gray-700' : 'border-gray-300 bg-gray-50'
+                    }`}>
+                      <h4 className={`font-medium mb-2 ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>
+                        Purge Old Stories
+                      </h4>
+                      <p className={`text-sm mb-4 ${isDarkMode ? 'text-gray-400' : 'text-gray-600'}`}>
+                        Delete stories older than a specified number of days.
+                      </p>
+                      <div className="flex space-x-3">
+                        <select
+                          className={`flex-1 px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 ${
+                            isDarkMode
+                              ? 'border-gray-600 bg-gray-800 text-white'
+                              : 'border-gray-300 bg-white text-gray-900'
+                          }`}
+                          onChange={(e) => {
+                            if (e.target.value && confirm(`Are you sure you want to delete all stories older than ${e.target.value} days? This cannot be undone.`)) {
+                              onSendMessage({ 
+                                type: 'purge_old_stories', 
+                                payload: { days: parseInt(e.target.value) } 
+                              });
+                              e.target.value = '';
+                            }
+                          }}
+                        >
+                          <option value="">Select Age to Purge</option>
+                          <option value="7">Older than 7 days</option>
+                          <option value="14">Older than 14 days</option>
+                          <option value="30">Older than 30 days</option>
+                          <option value="60">Older than 60 days</option>
+                          <option value="90">Older than 90 days</option>
+                        </select>
+                      </div>
+                    </div>
+
+                    {/* Purge by Source */}
+                    <div className={`border rounded-lg p-4 ${
+                      isDarkMode ? 'border-gray-600 bg-gray-700' : 'border-gray-300 bg-gray-50'
+                    }`}>
+                      <h4 className={`font-medium mb-2 ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>
+                        Purge Stories by Source
+                      </h4>
+                      <p className={`text-sm mb-4 ${isDarkMode ? 'text-gray-400' : 'text-gray-600'}`}>
+                        Delete all stories from a specific RSS feed source.
+                      </p>
+                      <div className="flex space-x-3">
+                        <select
+                          className={`flex-1 px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 ${
+                            isDarkMode
+                              ? 'border-gray-600 bg-gray-800 text-white'
+                              : 'border-gray-300 bg-white text-gray-900'
+                          }`}
+                          onChange={(e) => {
+                            if (e.target.value && confirm(`Are you sure you want to delete all stories from this feed? This cannot be undone.`)) {
+                              onSendMessage({ 
+                                type: 'purge_source_stories', 
+                                payload: { source_uid: parseInt(e.target.value) } 
+                              });
+                              e.target.value = '';
+                            }
+                          }}
+                        >
+                          <option value="">Select Feed to Purge</option>
+                          {data.feeds?.map((feed) => (
+                            <option key={feed.uid} value={feed.uid}>
+                              {feed.name}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
             </div>
           </div>
         </div>
