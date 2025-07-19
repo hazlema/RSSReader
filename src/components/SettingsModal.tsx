@@ -39,42 +39,36 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
   });
   const [validationInProgress, setValidationInProgress] = useState(false);
   const [validationModal, setValidationModal] = useState<{
-    isOpen: boolean;
-    isValid: boolean;
-    message: string;
-  }>({ isOpen: false, isValid: false, message: '' });
-  const [isDatabaseViewOpen, setIsDatabaseViewOpen] = useState(false);
-
-  useEffect(() => {
-    setActiveTab(initialTab);
-  }, [initialTab]);
-
-  useEffect(() => {
-    if (data.apiKeys) {
-      const xaiKey = data.apiKeys.find(key => key.key_name === 'XAI_API_KEY');
-      if (xaiKey) {
-        setXaiKeyValue(xaiKey.key_value || '');
-      }
-
-      const twitterKeys = ['BEARER', 'CONSUMER_KEY', 'CONSUMER_SECRET', 'ACCESS_TOKEN', 'ACCESS_SECRET'];
-      const newTwitterValues = { ...twitterKeyValues };
-      twitterKeys.forEach(keyName => {
-        const key = data.apiKeys.find(k => k.key_name === keyName);
-        if (key) {
-          newTwitterValues[keyName] = key.key_value || '';
+  const validateXaiKey = async (keyValue: string) => {
+    setValidationInProgress(true);
+    
+    // Wait a moment for the key to be saved, then validate
+    setTimeout(async () => {
+      try {
+        const response = await fetch('http://localhost:3001/api/check-xapi', {
+          method: 'GET',
+          headers: {
+            'Cache-Control': 'no-cache'
+          }
+        });
+        
+        if (response.ok) {
+          const result = await response.json();
+          setXaiKeyStatus(result.valid ? 'valid' : 'invalid');
+          setXaiKeyMessage(result.message || (result.valid ? 'API key is valid' : 'API key is invalid'));
+        } else {
+          setXaiKeyStatus('invalid');
+          setXaiKeyMessage('Failed to validate API key');
         }
-      });
-      setTwitterKeyValues(newTwitterValues);
-    }
-  }, [data.apiKeys]);
-
-  if (!isOpen) return null;
-
-  const handleAddFeed = () => {
-    if (newFeed.name && newFeed.url) {
-      onSendMessage({
-        type: 'add_feed',
-        payload: {
+      } catch (error) {
+        console.error('Validation error:', error);
+        setXaiKeyStatus('invalid');
+        setXaiKeyMessage('Validation failed: ' + (error instanceof Error ? error.message : 'Unknown error'));
+      } finally {
+        setValidationInProgress(false);
+      }
+    }, 1000);
+  };
           name: newFeed.name,
           url: newFeed.url,
           categories_uid: newFeed.categories_uid ? parseInt(newFeed.categories_uid) : null,
