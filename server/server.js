@@ -116,7 +116,7 @@ app.get('/api/thumbnail', async (req, res) => {
     
     if (!response.ok) {
       console.log(`Failed to fetch page: ${response.status} ${response.statusText}`);
-      return res.status(404).json({ error: 'Failed to fetch page' });
+      return res.json({ thumbnail: null });
     }
     
     // Check if the response is HTML content
