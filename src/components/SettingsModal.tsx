@@ -448,9 +448,11 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                             <div className="flex space-x-2">
                               <button
                                 onClick={handleSaveXaiKey}
+                                disabled={validationInProgress}
                                 className="inline-flex items-center px-3 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 transition-colors"
                               >
-                                <Save className="w-4 h-4" />
+                                <Save className="w-4 h-4 mr-1" />
+                                {validationInProgress ? 'Testing...' : 'Save & Test'}
                               </button>
                               <button
                                 onClick={handleCancelXaiEdit}
