@@ -46,29 +46,19 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
   const [isDatabaseViewOpen, setIsDatabaseViewOpen] = useState(false);
 
   useEffect(() => {
-    setActiveTab(initialTab);
-  }, [initialTab]);
-
-  useEffect(() => {
     if (data.apiKeys) {
       const xaiKey = data.apiKeys.find(key => key.key_name === 'XAI_API_KEY');
-      if (xaiKey) {
-        setXaiKeyValue(xaiKey.key_value || '');
-      }
+      setXaiKeyValue(xaiKey?.key_value || '');
 
       const twitterKeys = ['BEARER', 'CONSUMER_KEY', 'CONSUMER_SECRET', 'ACCESS_TOKEN', 'ACCESS_SECRET'];
-      const newTwitterValues = { ...twitterKeyValues };
+      const twitterValues = { ...twitterKeyValues };
       twitterKeys.forEach(keyName => {
         const key = data.apiKeys.find(k => k.key_name === keyName);
-        if (key) {
-          newTwitterValues[keyName] = key.key_value || '';
-        }
+        twitterValues[keyName] = key?.key_value || '';
       });
-      setTwitterKeyValues(newTwitterValues);
+      setTwitterKeyValues(twitterValues);
     }
   }, [data.apiKeys]);
-
-  if (!isOpen) return null;
 
   const handleAddFeed = () => {
     if (newFeed.name && newFeed.url) {
@@ -83,6 +73,46 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
       });
       setNewFeed({ name: '', url: '', categories_uid: '', logo_url: '' });
     }
+  };
+
+  const validateXaiKey = async (keyValue: string) => {
+    setValidationInProgress(true);
+    
+    // Wait a moment for the key to be saved, then validate
+    setTimeout(async () => {
+      try {
+        const response = await fetch('http://localhost:3001/api/check-xapi', {
+          method: 'GET',
+          headers: {
+            'Cache-Control': 'no-cache'
+          }
+        });
+        
+        if (response.ok) {
+          const result = await response.json();
+          setValidationModal({
+            isOpen: true,
+            isValid: result.valid,
+            message: result.message || (result.valid ? 'API key is valid' : 'API key is invalid')
+          });
+        } else {
+          setValidationModal({
+            isOpen: true,
+            isValid: false,
+            message: 'Failed to validate API key'
+          });
+        }
+      } catch (error) {
+        console.error('Validation error:', error);
+        setValidationModal({
+          isOpen: true,
+          isValid: false,
+          message: 'Validation failed: ' + (error instanceof Error ? error.message : 'Unknown error')
+        });
+      } finally {
+        setValidationInProgress(false);
+      }
+    }, 1000);
   };
 
   const handleUpdateFeed = () => {
@@ -153,54 +183,6 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
 
   const handleDeleteReaction = (uid: number) => {
     onSendMessage({ type: 'delete_reaction', payload: { uid } });
-  };
-
-  const validateXaiKey = async (keyValue: string) => {
-    try {
-      setValidationInProgress(true);
-      // Wait a moment for the key to be saved, then validate
-      setTimeout(async () => {
-        try {
-          const response = await fetch('/api/check-xapi', {
-            method: 'GET',
-            headers: {
-              'Cache-Control': 'no-cache'
-            }
-          });
-          
-          if (!response.ok) {
-            throw new Error(`HTTP ${response.status}: ${response.statusText}`);
-          }
-          
-          const result = await response.json();
-          
-          setValidationModal({
-            isOpen: true,
-            isValid: result.valid,
-            message: result.valid ? 'XAI API key is valid and working!' : (result.message || 'API key validation failed')
-          });
-          
-        } catch (error) {
-          console.error('Validation error:', error);
-          setValidationModal({
-            isOpen: true,
-            isValid: false,
-            message: `Validation failed: ${error.message}`
-          });
-        } finally {
-          setValidationInProgress(false);
-        }
-      }, 1000); // Wait 1 second for the key to be saved
-      
-    } catch (error) {
-      setValidationModal({
-        isOpen: true,
-        isValid: false,
-        message: `Failed to save API key: ${error.message}`
-      });
-      setValidationInProgress(false);
-      return false;
-    }
   };
 
   const handleSaveXaiKey = async () => {
