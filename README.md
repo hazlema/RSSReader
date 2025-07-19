@@ -37,6 +37,20 @@ A modern, full-featured RSS reader and news curation platform built with React, 
 - **Automatic Polling**: Feeds refresh every 10 minutes automatically
 - **Error Handling**: Robust error handling and recovery
 
+### Screenshots
+
+These screenshots showcase key features of the application.
+
+| Published / Hidden | About | Database Viewer / Import / Export |
+|-----------|-------|----------|
+| ![Published / Hidden screenshot](docs/images/published.png) | ![About screenshot](docs/images/about.png) | ![Database Viewer screenshot](docs/images/database.png) |
+| *Main Interface* | *Settings -> About* | *Settings -> Database View Button* |
+
+| Feeds | Light Mode | Reactions |
+|-------|------------|-----------|
+| ![Feeds screenshot](docs/images/feeds.png) | ![Light mode screenshot](docs/images/light.png) | ![Reactions screenshot](docs/images/reactions.png) |
+| *Settings -> Feeds Tab.* | *Light theme applied.* | *Settings -> Reactions* |
+
 ## 🚀 Quick Start
 
 ### Prerequisites
