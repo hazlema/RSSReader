@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { X, Plus, Edit2, Trash2, Save, Database, AlertTriangle, Key } from 'lucide-react';
+import { X, Plus, Edit2, Trash2, Save, Database, AlertTriangle, Key, CheckCircle, AlertCircle } from 'lucide-react';
 import { DatabaseViewModal } from './DatabaseViewModal';
 import { ApiKeyItem } from './ApiKeyItem';
 import packageJson from '../../package.json';
@@ -35,6 +35,11 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
 	const [newReaction, setNewReaction] = useState({ type: '', prompt: '' });
 	const [editingReaction, setEditingReaction] = useState<any>(null);
 	const [validationErrors, setValidationErrors] = useState<{[key: string]: string}>({});
+
+	// XAI API validation state
+	const [xaiValidationModal, setXaiValidationModal] = useState(false);
+	const [xaiValidationMessage, setXaiValidationMessage] = useState('');
+	const [xaiValidationSuccess, setXaiValidationSuccess] = useState(false);
 
 	// Calculate stats for About tab
 	const calculateStats = () => {
@@ -262,12 +267,52 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
 	const saveApiKey = (keyName: string) => {
 		const value = editingApiKeys[keyName];
 		if (value !== undefined) {
+			// Special validation for XAI API key
+			if (keyName === 'XAI_API_KEY') {
+				validateXaiApiKey(keyName, value);
+			} else {
+				handleUpdateApiKey(keyName, value);
+				setEditingApiKeys(prev => {
+					const newState = { ...prev };
+					delete newState[keyName];
+					return newState;
+				});
+			}
+		}
+	};
+
+	const validateXaiApiKey = async (keyName: string, value: string) => {
+		try {
+			// First save the key to database so the endpoint can check it
 			handleUpdateApiKey(keyName, value);
-			setEditingApiKeys(prev => {
-				const newState = { ...prev };
-				delete newState[keyName];
-				return newState;
-			});
+			
+			// Wait a moment for the database update to complete
+			await new Promise(resolve => setTimeout(resolve, 500));
+			
+			// Check the API key validity
+			const response = await fetch('/api/check-xapi');
+			const result = await response.json();
+			
+			if (result.valid) {
+				setXaiValidationSuccess(true);
+				setXaiValidationMessage('XAI API key is valid and working correctly!');
+				setXaiValidationModal(true);
+				
+				// Clear editing state on success
+				setEditingApiKeys(prev => {
+					const newState = { ...prev };
+					delete newState[keyName];
+					return newState;
+				});
+			} else {
+				setXaiValidationSuccess(false);
+				setXaiValidationMessage(result.message || 'The XAI API key appears to be invalid. Please check your key and try again.');
+				setXaiValidationModal(true);
+			}
+		} catch (error) {
+			setXaiValidationSuccess(false);
+			setXaiValidationMessage('Unable to validate the XAI API key. Please check your internet connection and try again.');
+			setXaiValidationModal(true);
 		}
 	};
 
@@ -1281,6 +1326,55 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
 									className="px-4 py-2 bg-red-600 text-white rounded-md hover:bg-red-700 transition-colors"
 								>
 									Yes, Purge Stories
+								</button>
+							</div>
+						</div>
+					</div>
+				</div>
+			)}
+
+			{/* XAI API Validation Modal */}
+			{xaiValidationModal && (
+				<div className="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center p-4 z-[70]">
+					<div className={`rounded-lg shadow-xl max-w-md w-full ${
+						isDarkMode ? 'bg-gray-800' : 'bg-white'
+					}`}>
+						<div className={`p-6 border-b ${
+							isDarkMode ? 'border-gray-700' : 'border-gray-200'
+						}`}>
+							<div className="flex items-center space-x-3">
+								{xaiValidationSuccess ? (
+									<CheckCircle className="w-6 h-6 text-green-500" />
+								) : (
+									<AlertCircle className="w-6 h-6 text-red-500" />
+								)}
+								<h3 className={`text-lg font-semibold ${
+									isDarkMode ? 'text-white' : 'text-gray-900'
+								}`}>
+									XAI API Key Validation
+								</h3>
+							</div>
+						</div>
+
+						<div className="p-6">
+							<p className={`mb-6 ${
+								isDarkMode ? 'text-gray-300' : 'text-gray-700'
+							}`}>
+								{xaiValidationMessage}
+							</p>
+
+							<div className="flex justify-end">
+								<button
+									onClick={() => setXaiValidationModal(false)}
+									className={`px-4 py-2 rounded-md transition-colors ${
+										xaiValidationSuccess
+											? 'bg-green-600 text-white hover:bg-green-700'
+											: isDarkMode
+												? 'border border-gray-600 text-gray-300 hover:bg-gray-700'
+												: 'border border-gray-300 text-gray-700 hover:bg-gray-50'
+									}`}
+								>
+									{xaiValidationSuccess ? 'Great!' : 'OK'}
 								</button>
 							</div>
 						</div>
