@@ -39,41 +39,37 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
   });
   const [validationInProgress, setValidationInProgress] = useState(false);
   const [validationModal, setValidationModal] = useState<{
-    show: boolean;
-    message: string;
+    isOpen: boolean;
     isValid: boolean;
-  }>({ show: false, message: '', isValid: false });
+    message: string;
+  }>({ isOpen: false, isValid: false, message: '' });
+  const [isDatabaseViewOpen, setIsDatabaseViewOpen] = useState(false);
 
-  const validateXaiKey = async (keyValue: string) => {
-    setValidationInProgress(true);
-    
-    // Wait a moment for the key to be saved, then validate
-    setTimeout(async () => {
-      try {
-        const response = await fetch('http://localhost:3001/api/check-xapi', {
-          method: 'GET',
-          headers: {
-            'Cache-Control': 'no-cache'
-          }
-        });
-        
-        if (response.ok) {
-          const result = await response.json();
-          setXaiKeyStatus(result.valid ? 'valid' : 'invalid');
-          setXaiKeyMessage(result.message || (result.valid ? 'API key is valid' : 'API key is invalid'));
-        } else {
-          setXaiKeyStatus('invalid');
-          setXaiKeyMessage('Failed to validate API key');
-        }
-      } catch (error) {
-        console.error('Validation error:', error);
-        setXaiKeyStatus('invalid');
-        setXaiKeyMessage('Validation failed: ' + (error instanceof Error ? error.message : 'Unknown error'));
-      } finally {
-        setValidationInProgress(false);
+  useEffect(() => {
+    setActiveTab(initialTab);
+  }, [initialTab]);
+
+  useEffect(() => {
+    if (data.apiKeys) {
+      const xaiKey = data.apiKeys.find(key => key.key_name === 'XAI_API_KEY');
+      if (xaiKey) {
+        setXaiKeyValue(xaiKey.key_value || '');
       }
-    }, 1000);
-  };
+
+      const twitterKeys = ['BEARER', 'CONSUMER_KEY', 'CONSUMER_SECRET', 'ACCESS_TOKEN', 'ACCESS_SECRET'];
+      const newTwitterValues = { ...twitterKeyValues };
+      twitterKeys.forEach(keyName => {
+        const key = data.apiKeys.find(k => k.key_name === keyName);
+        if (key) {
+          newTwitterValues[keyName] = key.key_value || '';
+        }
+      });
+      setTwitterKeyValues(newTwitterValues);
+    }
+  }, [data.apiKeys]);
+
+  if (!isOpen) return null;
+
   const handleAddFeed = () => {
     if (newFeed.name && newFeed.url) {
       onSendMessage({
@@ -196,16 +192,13 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
         }
       }, 1000); // Wait 1 second for the key to be saved
       
-      });
-      
-      return result.valid;
     } catch (error) {
       setValidationModal({
-      setValidationInProgress(false);
         isOpen: true,
         isValid: false,
         message: `Failed to save API key: ${error.message}`
       });
+      setValidationInProgress(false);
       return false;
     }
   };
@@ -288,17 +281,17 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                 <Database className="w-4 h-4 mr-2" />
                 Database View
               </button>
+              <button
+                onClick={onClose}
+                className={`transition-colors ${
+                  isDarkMode 
+                    ? 'text-gray-500 hover:text-gray-300' 
+                    : 'text-gray-400 hover:text-gray-600'
+                }`}
+              >
+                <X className="w-6 h-6" />
+              </button>
             </div>
-            <button
-              onClick={onClose}
-              className={`transition-colors ${
-                isDarkMode 
-                  ? 'text-gray-500 hover:text-gray-300' 
-                  : 'text-gray-400 hover:text-gray-600'
-              }`}
-            >
-              <X className="w-6 h-6" />
-            </button>
           </div>
 
           <div className="flex h-[calc(90vh-8rem)]">
