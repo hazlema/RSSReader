@@ -1,5 +1,6 @@
 // AboutTab.tsx
 import React from 'react';
+import packageJson from '../../package.json'; // Adjust the path if AboutTab.tsx is in a different directory (e.g., src/components)
 
 interface AboutTabProps {
   feeds: any[];
@@ -9,6 +10,29 @@ interface AboutTabProps {
 }
 
 export const AboutTab: React.FC<AboutTabProps> = ({ feeds, stories, categories, isDarkMode }) => {
+  const findOldestDate = () => {
+    if (!Array.isArray(stories) || stories.length === 0) {
+      return null; // Or throw an error, depending on requirements
+    }
+
+    let oldestDate = null;
+
+    for (const story of stories) {
+      if (story && story.last) {
+        const date = new Date(story.last);
+        if (!isNaN(date.getTime())) { // Check if valid date
+          if (oldestDate === null || date < oldestDate) {
+            oldestDate = date;
+          }
+        }
+      }
+    }
+
+    return oldestDate;
+  };
+
+  const oldestStoryDate = findOldestDate();
+
   return (
     <div>
       <h3 className={`text-lg font-semibold mb-4 ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>
@@ -33,7 +57,13 @@ export const AboutTab: React.FC<AboutTabProps> = ({ feeds, stories, categories, 
           </div>
           <div className={`p-4 rounded-lg ${isDarkMode ? 'bg-gray-700' : 'bg-gray-100'}`}>
             <h4 className="font-medium mb-2">Version</h4>
-            <p className="text-2xl font-bold">1.0.0</p>
+            <p className="text-2xl font-bold">{packageJson.version}</p>
+          </div>
+          <div className={`p-4 rounded-lg col-span-2 ${isDarkMode ? 'bg-gray-700' : 'bg-gray-100'}`}>
+            <h4 className="font-medium mb-2">Oldest Story Date</h4>
+            <p className="text-2xl font-bold">
+              {oldestStoryDate ? oldestStoryDate.toLocaleDateString() : 'N/A'}
+            </p>
           </div>
         </div>
       </div>

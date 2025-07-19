@@ -134,27 +134,27 @@ export const StoryCard: React.FC<StoryCardProps> = ({
 				{/* Column 2: Content */}
 				<div className="flex-1 min-w-0">
 					{/* Date/Time */}
-					<div className={`flex items-center space-x-2 text-sm mb-2 ${isDarkMode ? 'text-gray-400' : 'text-gray-500'
+					<div className={`flex items-center space-x-2 text-sm mb-1 ${isDarkMode ? 'text-gray-400' : 'text-gray-500'
 						}`}>
 						<span>{date}</span>
 						<span>•</span>
 						<span>{time}</span>
-						<span className={`px-2 py-1 rounded-full text-xs ${isDarkMode
-							? 'bg-blue-900/30 text-blue-400'
-							: 'bg-blue-100 text-blue-800'
+						<span className={`px-2 rounded-full text-xs ${isDarkMode
+							? 'bg-yellow-900/30 text-yellow-400'
+							: 'bg-yellow-100 text-yellow-800'
 							}`}>
-							{story.category_name || 'General'}
+							{story.feed_name || 'Unknown Source'}
 						</span>
 						<span className={`px-2 py-1 rounded-full text-xs ${isDarkMode
 							? 'bg-green-900/30 text-green-400'
 							: 'bg-green-100 text-green-800'
 							}`}>
-							{story.feed_name || 'Unknown Source'}
+							{story.category_name || 'General'}
 						</span>
 					</div>
 
 					{/* Title */}
-					<h3 className={`text-lg font-semibold mb-2 line-clamp-2 leading-[110%] ${isDarkMode ? 'text-white' : 'text-gray-900'
+					<h3 className={`text-lg font-semibold mb-1 line-clamp-2 leading-[110%] ${isDarkMode ? 'text-white' : 'text-gray-900'
 						}`}>
 						{story.title}
 					</h3>

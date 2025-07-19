@@ -179,7 +179,7 @@ function App() {
 		<div className={`min-h-screen transition-colors ${isDarkMode ? 'bg-gray-900' : 'bg-gray-50'}`}>
 			<Header
 				onSettingsClick={() => {
-					setSettingsInitialTab('feeds');
+					setSettingsInitialTab('about');
 					setIsSettingsOpen(true);
 				}}
 				onRefreshClick={handleRefresh}

@@ -1,7 +1,6 @@
 // SettingsModal.tsx
 import React, { useState, useEffect } from 'react';
 import { X, Plus, Edit2, Save, Trash2, Database, Key, MessageSquare, Info, AlertTriangle, CheckCircle, XCircle } from 'lucide-react';
-import { ApiKeyItem } from './ApiKeyItem';
 import { DatabaseViewModal } from './DatabaseViewModal';
 import { AboutTab } from './AboutTab';
 import { ApiSettingsTab } from './ApiSettingsTab';
@@ -9,7 +8,6 @@ import { FeedsTab } from './FeedsTab';
 import { CategoriesTab } from './CategoriesTab';
 import { ReactionsTab } from './ReactionsTab';
 import { PurgeTab } from './PurgeTab';
-import { DatabaseManagementTab } from './DatabaseManagementTab';
 
 interface SettingsModalProps {
   isOpen: boolean;
@@ -26,7 +24,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
   data,
   onSendMessage,
   isDarkMode,
-  initialTab = 'feeds'
+  initialTab = 'about'
 }) => {
   const [activeTab, setActiveTab] = useState(initialTab);
   const [dbModalOpen, setDbModalOpen] = useState(false);
@@ -75,8 +73,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
     { id: 'feeds', label: 'RSS Feeds', icon: Plus },
     { id: 'categories', label: 'Categories', icon: Edit2 },
     { id: 'reactions', label: 'Reactions', icon: MessageSquare },
-    { id: 'purge', label: 'Purge Stories', icon: Trash2 },
-    { id: 'database', label: 'Database', icon: Database }
+    { id: 'purge', label: 'Purge Stories', icon: Trash2 }
   ];
 
   return (
@@ -91,22 +88,35 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
             <h2 className={`text-xl font-semibold ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>
               Settings
             </h2>
-            <button
-              onClick={onClose}
-              className={`p-2 rounded-md transition-colors ${
-                isDarkMode 
-                  ? 'text-gray-400 hover:text-gray-200 hover:bg-gray-700' 
-                  : 'text-gray-500 hover:text-gray-700 hover:bg-gray-100'
-              }`}
-            >
-              <X className="w-5 h-5" />
-            </button>
+            <div className="flex items-center space-x-2">
+              <button
+                onClick={() => setDbModalOpen(true)}
+                className={`flex items-center space-x-1 p-2 rounded-md transition-colors whitespace-nowrap ${
+                  isDarkMode 
+                    ? 'text-gray-400 hover:text-gray-200 hover:bg-gray-700' 
+                    : 'text-gray-500 hover:text-gray-700 hover:bg-gray-100'
+                }`}
+              >
+                <Database className="w-5 h-5" />
+                <span>Database Viewer</span>
+              </button>
+              <button
+                onClick={onClose}
+                className={`p-2 rounded-md transition-colors ${
+                  isDarkMode 
+                    ? 'text-gray-400 hover:text-gray-200 hover:bg-gray-700' 
+                    : 'text-gray-500 hover:text-gray-700 hover:bg-gray-100'
+                }`}
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
           </div>
 
           <div className="flex h-[calc(90vh-8rem)]">
             {/* Sidebar */}
             <div className={`w-64 border-r ${
-              isDarkMode ? 'border-gray-700 bg-gray-750' : 'border-gray-200 bg-gray-50'
+              isDarkMode ? 'border-gray-700 bg-gray-800' : 'border-gray-200 bg-gray-50'
             }`}>
               <nav className="p-4 space-y-2">
                 {tabs.map((tab) => {
@@ -134,7 +144,13 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
             </div>
 
             {/* Content */}
-            <div className="flex-1 overflow-y-auto p-6">
+            <div className={`flex-1 overflow-y-auto p-6 ${
+                          isDarkMode
+                            ? 'bg-gray-900'
+                            : 'bg-gray-200'
+                      }`}
+                    >
+
               {activeTab === 'about' && (
                 <AboutTab 
                   feeds={data.feeds}
@@ -178,12 +194,6 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                   categories={data.categories}
                   onSendMessage={onSendMessage}
                   isDarkMode={isDarkMode}
-                />
-              )}
-              {activeTab === 'database' && (
-                <DatabaseManagementTab 
-                  isDarkMode={isDarkMode}
-                  onOpenDbModal={() => setDbModalOpen(true)}
                 />
               )}
             </div>

@@ -1,3 +1,4 @@
+// DatabaseViewModal.tsx (updated with tabs for less clutter and better scrolling)
 import React, { useState, useEffect } from 'react';
 import { X, Database, RefreshCw, Download, Upload, AlertCircle, FileText } from 'lucide-react';
 
@@ -19,6 +20,7 @@ export const DatabaseViewModal: React.FC<DatabaseViewModalProps> = ({
   const [importSuccess, setImportSuccess] = useState<string | null>(null);
   const [showImportWarning, setShowImportWarning] = useState(false);
   const [pendingImportFile, setPendingImportFile] = useState<File | null>(null);
+  const [activeTable, setActiveTable] = useState<string>('categories'); // Default to first tab
 
   const fetchDatabaseData = async () => {
     setLoading(true);
@@ -144,12 +146,20 @@ export const DatabaseViewModal: React.FC<DatabaseViewModalProps> = ({
 
   if (!isOpen) return null;
 
+  const tables = [
+    { key: 'categories', title: 'Categories', data: dbData?.categories || [] },
+    { key: 'feeds', title: 'Feeds', data: dbData?.feeds || [] },
+    { key: 'stories', title: 'Stories', data: dbData?.stories || [] },
+    { key: 'apiKeys', title: 'API Keys', data: dbData?.apiKeys || [] },
+    { key: 'reactions', title: 'Reactions', data: dbData?.reactions || [] }
+  ];
+
   const renderTable = (title: string, data: any[]) => (
-    <div className="mb-8">
-      <h3 className={`text-lg font-semibold mb-4 flex items-center ${
+    <div className="mb-4"> {/* Reduced margin for tighter layout */}
+      <h3 className={`text-md font-semibold mb-2 flex items-center ${  // Smaller heading
         isDarkMode ? 'text-white' : 'text-gray-900'
       }`}>
-        <Database className="w-5 h-5 mr-2" />
+        <Database className="w-4 h-4 mr-2" />  {/* Smaller icon */}
         {title} ({data.length} rows)
       </h3>
       {data.length === 0 ? (
@@ -157,16 +167,16 @@ export const DatabaseViewModal: React.FC<DatabaseViewModalProps> = ({
           No data in this table
         </p>
       ) : (
-        <div className="overflow-x-auto">
-          <table className={`min-w-full border rounded-lg ${
+        <div className="overflow-x-auto">  {/* Only horizontal scroll for wide tables */}
+          <table className={`min-w-full border rounded-lg text-sm ${  // Smaller text
             isDarkMode ? 'border-gray-600' : 'border-gray-300'
           }`}>
-            <thead className={`${
+            <thead className={`sticky top-0 z-10 ${
               isDarkMode ? 'bg-gray-700' : 'bg-gray-50'
             }`}>
               <tr>
                 {Object.keys(data[0]).map((key) => (
-                  <th key={key} className={`px-4 py-2 text-left text-sm font-medium border-b ${
+                  <th key={key} className={`px-3 py-1 text-left text-xs font-medium border-b whitespace-nowrap ${  // Added nowrap to prevent column wrapping
                     isDarkMode 
                       ? 'text-gray-300 border-gray-600' 
                       : 'text-gray-700 border-gray-300'
@@ -182,11 +192,11 @@ export const DatabaseViewModal: React.FC<DatabaseViewModalProps> = ({
                   isDarkMode ? 'hover:bg-gray-700' : 'hover:bg-gray-50'
                 }`}>
                   {Object.values(row).map((value, cellIndex) => (
-                    <td key={cellIndex} className={`px-4 py-2 text-sm border-b ${
+                    <td key={cellIndex} className={`px-3 py-1 text-xs border-b max-w-xs truncate ${  // Truncate long text with ellipsis
                       isDarkMode 
                         ? 'text-gray-300 border-gray-600' 
                         : 'text-gray-900 border-gray-300'
-                    }`}>
+                    }`} title={String(value) || ''}>  {/* Tooltip for full text on hover */}
                       {value === null ? (
                         <span className={`italic ${
                           isDarkMode ? 'text-gray-500' : 'text-gray-400'
@@ -210,19 +220,19 @@ export const DatabaseViewModal: React.FC<DatabaseViewModalProps> = ({
   return (
     <>
       <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-[60]">
-        <div className={`rounded-lg shadow-xl max-w-6xl w-full max-h-[90vh] overflow-hidden ${
+        <div className={`rounded-lg shadow-xl max-w-7xl w-full max-h-[90vh] overflow-hidden ${  // Increased max-width to reduce overlap
           isDarkMode ? 'bg-gray-800' : 'bg-white'
         }`}>
-          <div className={`flex items-center justify-between p-6 border-b ${
+          <div className={`flex items-center justify-between p-4 border-b ${  // Reduced padding
             isDarkMode ? 'border-gray-700' : 'border-gray-200'
           }`}>
             <div className="flex items-center space-x-3">
-              <Database className={`w-6 h-6 ${isDarkMode ? 'text-blue-400' : 'text-blue-600'}`} />
-              <h2 className={`text-xl font-semibold ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>
+              <Database className={`w-5 h-5 ${isDarkMode ? 'text-blue-400' : 'text-blue-600'}`} />  {/* Smaller header icon */}
+              <h2 className={`text-lg font-semibold ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>  {/* Smaller title */}
                 Database View
               </h2>
               {dbData && (
-                <span className={`text-sm ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>
+                <span className={`text-xs ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>  {/* Smaller text */}
                   Last updated: {new Date(dbData.timestamp).toLocaleString()}
                 </span>
               )}
@@ -232,17 +242,17 @@ export const DatabaseViewModal: React.FC<DatabaseViewModalProps> = ({
                 <>
                   <button
                     onClick={handleExport}
-                    className={`inline-flex items-center px-3 py-2 border rounded-md text-sm font-medium transition-colors ${
+                    className={`inline-flex items-center px-2 py-1 border rounded-md text-xs font-medium transition-colors ${  // Compact buttons
                       isDarkMode
                         ? 'border-gray-600 text-gray-300 bg-gray-700 hover:bg-gray-600'
                         : 'border-gray-300 text-gray-700 bg-white hover:bg-gray-50'
                     }`}
                   >
-                    <Download className="w-4 h-4 mr-2" />
+                    <Download className="w-3 h-3 mr-1" />  {/* Smaller icons */}
                     Export
                   </button>
                   
-                  <label className={`inline-flex items-center px-3 py-2 border rounded-md text-sm font-medium transition-colors cursor-pointer ${
+                  <label className={`inline-flex items-center px-2 py-1 border rounded-md text-xs font-medium transition-colors cursor-pointer ${
                     importing
                       ? isDarkMode
                         ? 'border-gray-600 text-gray-500 bg-gray-800 cursor-not-allowed'
@@ -251,7 +261,7 @@ export const DatabaseViewModal: React.FC<DatabaseViewModalProps> = ({
                         ? 'border-gray-600 text-gray-300 bg-gray-700 hover:bg-gray-600'
                         : 'border-gray-300 text-gray-700 bg-white hover:bg-gray-50'
                   }`}>
-                    <Upload className="w-4 h-4 mr-2" />
+                    <Upload className="w-3 h-3 mr-1" />
                     {importing ? 'Importing...' : 'Import'}
                     <input
                       type="file"
@@ -267,13 +277,13 @@ export const DatabaseViewModal: React.FC<DatabaseViewModalProps> = ({
               <button
                 onClick={fetchDatabaseData}
                 disabled={loading}
-                className={`inline-flex items-center px-3 py-2 border rounded-md text-sm font-medium transition-colors ${
+                className={`inline-flex items-center px-2 py-1 border rounded-md text-xs font-medium transition-colors ${
                   isDarkMode
                     ? 'border-gray-600 text-gray-300 bg-gray-700 hover:bg-gray-600 disabled:opacity-50'
                     : 'border-gray-300 text-gray-700 bg-white hover:bg-gray-50 disabled:opacity-50'
                 }`}
               >
-                <RefreshCw className={`w-4 h-4 mr-2 ${loading ? 'animate-spin' : ''}`} />
+                <RefreshCw className={`w-3 h-3 mr-1 ${loading ? 'animate-spin' : ''}`} />
                 Refresh
               </button>
               <button
@@ -284,56 +294,79 @@ export const DatabaseViewModal: React.FC<DatabaseViewModalProps> = ({
                     : 'text-gray-400 hover:text-gray-600'
                 }`}
               >
-                <X className="w-6 h-6" />
+                <X className="w-5 h-5" />  {/* Slightly smaller close icon */}
               </button>
             </div>
           </div>
 
-          <div className="overflow-y-auto max-h-[calc(90vh-8rem)] p-6">
+          <div className="overflow-y-auto max-h-[calc(90vh-8rem)] p-4">  {/* Reduced padding */}
             {importSuccess && (
-              <div className={`border rounded-md p-4 mb-6 ${
+              <div className={`border rounded-md p-3 mb-4 ${  // Compact notification
                 isDarkMode 
                   ? 'bg-green-900/20 border-green-800 text-green-300' 
                   : 'bg-green-50 border-green-200 text-green-800'
               }`}>
                 <div className="flex items-center">
-                  <FileText className="w-5 h-5 mr-2" />
-                  <p>{importSuccess}</p>
+                  <FileText className="w-4 h-4 mr-2" />  {/* Smaller icon */}
+                  <p className="text-sm">{importSuccess}</p>  {/* Smaller text */}
                 </div>
               </div>
             )}
 
             {loading && (
-              <div className="flex items-center justify-center py-12">
+              <div className="flex items-center justify-center py-8">  {/* Reduced height */}
                 <div className="animate-spin">
-                  <RefreshCw className={`w-8 h-8 ${isDarkMode ? 'text-blue-400' : 'text-blue-600'}`} />
+                  <RefreshCw className={`w-6 h-6 ${isDarkMode ? 'text-blue-400' : 'text-blue-600'}`} />  {/* Smaller spinner */}
                 </div>
-                <span className={`ml-3 text-lg ${isDarkMode ? 'text-gray-300' : 'text-gray-700'}`}>
+                <span className={`ml-3 text-md ${isDarkMode ? 'text-gray-300' : 'text-gray-700'}`}>  {/* Smaller text */}
                   Loading database data...
                 </span>
               </div>
             )}
 
             {error && (
-              <div className={`border rounded-md p-4 mb-6 ${
+              <div className={`border rounded-md p-3 mb-4 ${
                 isDarkMode 
                   ? 'bg-red-900/20 border-red-800 text-red-300' 
                   : 'bg-red-50 border-red-200 text-red-800'
               }`}>
                 <div className="flex items-center">
-                  <AlertCircle className="w-5 h-5 mr-2" />
-                  <p>Error: {error}</p>
+                  <AlertCircle className="w-4 h-4 mr-2" />
+                  <p className="text-sm">Error: {error}</p>  {/* Smaller text */}
                 </div>
               </div>
             )}
 
             {dbData && !loading && (
               <div>
-                {renderTable('Categories', dbData.categories)}
-                {renderTable('Feeds', dbData.feeds)}
-                {renderTable('Stories', dbData.stories)}
-                {renderTable('API Keys', dbData.apiKeys || [])}
-                {renderTable('Reactions', dbData.reactions || [])}
+                {/* Tab Navigation */}
+                <div className={`flex space-x-1 mb-4 border-b ${
+                  isDarkMode ? 'border-gray-700' : 'border-gray-200'
+                }`}>
+                  {tables.map((table) => (
+                    <button
+                      key={table.key}
+                      onClick={() => setActiveTable(table.key)}
+                      className={`px-3 py-1 text-sm font-medium transition-colors rounded-t-md ${
+                        activeTable === table.key
+                          ? isDarkMode
+                            ? 'bg-gray-700 text-white border-b-2 border-blue-400'
+                            : 'bg-white text-gray-900 border-b-2 border-blue-600'
+                          : isDarkMode
+                            ? 'text-gray-400 hover:text-gray-200 hover:bg-gray-700'
+                            : 'text-gray-500 hover:text-gray-700 hover:bg-gray-100'
+                      }`}
+                    >
+                      {table.title} ({table.data.length})
+                    </button>
+                  ))}
+                </div>
+
+                {/* Active Table Content */}
+                {tables.find(t => t.key === activeTable) && renderTable(
+                  tables.find(t => t.key === activeTable)!.title,
+                  tables.find(t => t.key === activeTable)!.data
+                )}
               </div>
             )}
           </div>
