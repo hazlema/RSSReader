@@ -58,11 +58,32 @@ class Database {
       // Clean up lock files more safely
       await this.cleanupLockFiles();
       
-      await this.openDatabase();
+      await this.retryConnect();
       await this._initializeTables();
     } catch (error) {
       console.error('Database initialization error:', error);
       throw error;
+    }
+  }
+
+  async retryConnect(maxRetries = 5) {
+    for (let attempt = 1; attempt <= maxRetries; attempt++) {
+      try {
+        await this.openDatabase();
+        console.log(`Database connection successful on attempt ${attempt}`);
+        return;
+      } catch (error) {
+        if (error.code === 'SQLITE_BUSY' && attempt < maxRetries) {
+          const delay = Math.pow(2, attempt) * 500; // Exponential backoff: 1s, 2s, 4s, 8s
+          console.log(`Database busy, retrying in ${delay}ms (attempt ${attempt}/${maxRetries})`);
+          await new Promise(resolve => setTimeout(resolve, delay));
+          
+          // Clean up lock files before retry
+          await this.cleanupLockFiles();
+          continue;
+        }
+        throw error;
+      }
     }
   }
 
