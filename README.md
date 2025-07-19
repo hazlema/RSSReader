@@ -37,7 +37,7 @@ A modern, full-featured RSS reader and news curation platform built with React, 
 - **Automatic Polling**: Feeds refresh every 10 minutes automatically
 - **Error Handling**: Robust error handling and recovery
 
-### Screenshots
+### 📷 Screenshots
 
 These screenshots showcase key features of the application.
 
