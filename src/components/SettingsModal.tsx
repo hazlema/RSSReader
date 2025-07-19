@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { X, Plus, Edit2, Save, Trash2, Database, AlertCircle, CheckCircle, Key } from 'lucide-react';
+import { X, Plus, Edit2, Save, Trash2, AlertCircle, CheckCircle, Wand2, Database } from 'lucide-react';
 import { DatabaseViewModal } from './DatabaseViewModal';
 
 interface SettingsModalProps {
@@ -1170,6 +1170,13 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
           </div>
         </div>
       )}
+
+      {/* Database View Modal */}
+      <DatabaseViewModal
+        isOpen={isDatabaseViewOpen}
+        onClose={() => setIsDatabaseViewOpen(false)}
+        isDarkMode={isDarkMode}
+      />
     </>
   );
 };
