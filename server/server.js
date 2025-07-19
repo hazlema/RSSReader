@@ -263,14 +263,15 @@ app.get('/api/thumbnail', async (req, res) => {
 });
 
 // xAI API key verification endpoint
-app.post('/api/check-xapi', async (req, res) => {
-  const { apiKey } = req.body;
-  
-  if (!apiKey) {
-    return res.status(400).json({ error: 'apiKey is required in request body' });
-  }
-  
+app.get('/api/check-xapi', async (req, res) => {
   try {
+    const apiKeys = await database.getAllApiKeys();
+    const apiKey = apiKeys.find(key => key.key_name === 'XAI_API_KEY')?.key_value;
+    
+    if (!apiKey) {
+      return res.status(400).json({ valid: false, message: 'No XAI API key stored in database' });
+    }
+    
     const response = await fetch('https://api.x.ai/v1/chat/completions', {
       method: 'POST',
       headers: {
