@@ -39,6 +39,11 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
   });
   const [validationInProgress, setValidationInProgress] = useState(false);
   const [validationModal, setValidationModal] = useState<{
+    show: boolean;
+    message: string;
+    isValid: boolean;
+  }>({ show: false, message: '', isValid: false });
+
   const validateXaiKey = async (keyValue: string) => {
     setValidationInProgress(true);
     
