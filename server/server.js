@@ -306,12 +306,35 @@ app.get('/api/check-xapi', async (req, res) => {
 });
 
 // Database dump endpoint for debugging
+// app.get('/api/db-dump', async (req, res) => {
+//   try {
+//     const [feeds, categories, stories, apiKeys, reactions] = await Promise.all([
+//       database.getAllFeeds(),
+//       database.getAllCategories(),
+//       database.getAllStories(),
+//       database.getAllApiKeys(),
+//       database.getAllReactions()
+//     ]);
+    
+//     res.json({
+//       feeds,
+//       categories,
+//       stories,
+//       apiKeys,
+//       reactions,
+//       timestamp: new Date().toISOString()
+//     });
+//   } catch (error) {
+//     console.error('Database dump error:', error);
+//     res.status(500).json({ error: error.message });
+//   }
+// });
+
 app.get('/api/db-dump', async (req, res) => {
   try {
-    const [feeds, categories, stories, apiKeys, reactions] = await Promise.all([
+    const [feeds, categories, apiKeys, reactions] = await Promise.all([
       database.getAllFeeds(),
       database.getAllCategories(),
-      database.getAllStories(),
       database.getAllApiKeys(),
       database.getAllReactions()
     ]);
@@ -319,7 +342,6 @@ app.get('/api/db-dump', async (req, res) => {
     res.json({
       feeds,
       categories,
-      stories,
       apiKeys,
       reactions,
       timestamp: new Date().toISOString()
