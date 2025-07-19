@@ -226,7 +226,8 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
     { id: 'api', label: 'API Settings', icon: Key },
     { id: 'feeds', label: 'RSS Feeds', icon: Rss },
     { id: 'categories', label: 'Categories', icon: Hash },
-    { id: 'reactions', label: 'Reactions', icon: MessageSquare }
+    { id: 'reactions', label: 'Reactions', icon: MessageSquare },
+    { id: 'purge', label: 'Purge Stories', icon: Trash2 }
   ];
 
   return (
@@ -238,9 +239,24 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
           <div className={`flex items-center justify-between p-6 border-b ${
             isDarkMode ? 'border-gray-700' : 'border-gray-200'
           }`}>
-            <h2 className={`text-xl font-semibold ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>
-              Settings
-            </h2>
+            <div className="flex items-center space-x-3">
+              <h2 className={`text-xl font-semibold ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>
+                Settings
+              </h2>
+            </div>
+            <div className="flex items-center space-x-2">
+              <button
+                onClick={() => setIsDatabaseViewOpen(true)}
+                className={`inline-flex items-center px-3 py-2 border rounded-md text-sm font-medium transition-colors ${
+                  isDarkMode
+                    ? 'border-gray-600 text-gray-300 bg-gray-700 hover:bg-gray-600'
+                    : 'border-gray-300 text-gray-700 bg-white hover:bg-gray-50'
+                }`}
+              >
+                <Database className="w-4 h-4 mr-2" />
+                Database View
+              </button>
+            </div>
             <button
               onClick={onClose}
               className={`transition-colors ${
