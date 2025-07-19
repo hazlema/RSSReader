@@ -21,6 +21,7 @@ export const DatabaseViewModal: React.FC<DatabaseViewModalProps> = ({
   const [showImportWarning, setShowImportWarning] = useState(false);
   const [pendingImportFile, setPendingImportFile] = useState<File | null>(null);
   const [activeTable, setActiveTable] = useState<string>('categories'); // Default to first tab
+  const [showRefreshPopup, setShowRefreshPopup] = useState(false);
 
   const fetchDatabaseData = async () => {
     setLoading(true);
@@ -123,6 +124,12 @@ export const DatabaseViewModal: React.FC<DatabaseViewModalProps> = ({
       
       // Refresh the database view
       await fetchDatabaseData();
+      
+      // Show refresh popup and schedule reload
+      setShowRefreshPopup(true);
+      setTimeout(() => {
+        window.location.reload();
+      }, 5000);
       
     } catch (err) {
       console.error('Import error:', err);
@@ -443,6 +450,18 @@ export const DatabaseViewModal: React.FC<DatabaseViewModalProps> = ({
                 </button>
               </div>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* Refresh Popup */}
+      {showRefreshPopup && (
+        <div className="fixed inset-0 bg-black flex items-center justify-center z-[80]">
+          <div className="text-white flex flex-col items-center">
+            <RefreshCw className="w-12 h-12 animate-spin mb-4" />
+            <p className="text-xl mb-3">Refresh in 5 seconds</p>
+			<p className="text-xl">When the page restarts</p>
+            <p className="text-xl">You will have to refresh the stories by clicking the refresh button or wait 10 minutes</p>
           </div>
         </div>
       )}
