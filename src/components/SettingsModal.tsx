@@ -37,6 +37,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
     ACCESS_TOKEN: '',
     ACCESS_SECRET: ''
   });
+  const [validationInProgress, setValidationInProgress] = useState(false);
   const [validationModal, setValidationModal] = useState<{
     isOpen: boolean;
     isValid: boolean;
@@ -156,23 +157,50 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
 
   const validateXaiKey = async (keyValue: string) => {
     try {
-      const response = await fetch('/api/check-xapi');
-      const result = await response.json();
+      setValidationInProgress(true);
+      // Wait a moment for the key to be saved, then validate
+      setTimeout(async () => {
+        try {
+          const response = await fetch('/api/check-xapi', {
+            method: 'GET',
+            headers: {
+              'Cache-Control': 'no-cache'
+            }
+          });
+          
+          if (!response.ok) {
+            throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+          }
+          
+          const result = await response.json();
+          
+          setValidationModal({
+            isOpen: true,
+            isValid: result.valid,
+            message: result.valid ? 'XAI API key is valid and working!' : (result.message || 'API key validation failed')
+          });
+          
+        } catch (error) {
+          console.error('Validation error:', error);
+          setValidationModal({
+            isOpen: true,
+            isValid: false,
+            message: `Validation failed: ${error.message}`
+          });
+        } finally {
+          setValidationInProgress(false);
+        }
+      }, 1000); // Wait 1 second for the key to be saved
       
-      setValidationModal({
-        isOpen: true,
-        isValid: result.valid,
-        message: result.valid 
-          ? 'XAI API key is valid and working!' 
-          : result.message || 'XAI API key validation failed'
       });
       
       return result.valid;
     } catch (error) {
       setValidationModal({
+      setValidationInProgress(false);
         isOpen: true,
         isValid: false,
-        message: 'Unable to validate XAI API key. Please check your connection.'
+        message: `Failed to save API key: ${error.message}`
       });
       return false;
     }
