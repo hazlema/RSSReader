@@ -155,20 +155,6 @@ class Database {
   }
 
   async _initializeTables(insertDefaults = true) {
-    // Wait longer for database to be ready and ensure exclusive access
-    await new Promise(resolve => setTimeout(resolve, 500));
-    
-    // Set immediate mode to avoid lock conflicts
-    try {
-      await this._run('PRAGMA locking_mode = EXCLUSIVE');
-      await this._run('PRAGMA journal_mode = MEMORY');
-      await this._run('PRAGMA synchronous = OFF');
-      await this._run('PRAGMA busy_timeout = 30000');
-      console.log('Database pragmas set successfully');
-    } catch (error) {
-      console.error('Error setting database pragmas:', error);
-    }
-    
     const tables = [
       `CREATE TABLE IF NOT EXISTS categories (
         uid INTEGER PRIMARY KEY AUTOINCREMENT,
