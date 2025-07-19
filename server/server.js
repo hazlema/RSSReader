@@ -428,11 +428,32 @@ app.post('/api/db-import', async (req, res) => {
             break;
             
           case 'stories':
+            // Create a lookup map from feed URLs to UIDs for source_uid mapping
+            const allFeeds = await database.getAllFeeds();
+            const feedUrlToUidMap = new Map();
+            allFeeds.forEach(feed => {
+              if (feed.url && feed.uid) {
+                feedUrlToUidMap.set(feed.url, feed.uid);
+              }
+            });
+            
             for (const record of tableData) {
               if (record.title && record.link) {
                 // Check if story already exists to avoid duplicates
                 const exists = await database.checkStoryExists(record.link);
                 if (!exists) {
+                  // Map source_url to source_uid using the feed lookup
+                  let sourceUid = record.source_uid;
+                  if (!sourceUid && record.source_url) {
+                    sourceUid = feedUrlToUidMap.get(record.source_url);
+                  }
+                  
+                  // Skip stories without a valid source_uid to prevent constraint violation
+                  if (!sourceUid) {
+                    console.warn(`Skipping story "${record.title}" - no valid source_uid found`);
+                    continue;
+                  }
+                  
                   // Preserve original UID if it exists
                   if (record.uid) {
                     const storyUid = record.uid;
@@ -440,7 +461,7 @@ app.post('/api/db-import', async (req, res) => {
                       'INSERT OR IGNORE INTO stories (uid, source_uid, categories_uid, title, link, published, visible, last) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
                       [
                         storyUid,
-                        record.source_uid || null,
+                        sourceUid,
                         record.categories_uid || null,
                         record.title,
                         record.link,
@@ -451,7 +472,7 @@ app.post('/api/db-import', async (req, res) => {
                     );
                   } else {
                     await database.addStory(
-                      record.source_uid || null,
+                      sourceUid,
                       record.categories_uid || null,
                       record.title,
                       record.link,
