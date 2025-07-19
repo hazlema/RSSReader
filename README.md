@@ -1,6 +1,6 @@
 # 📰 News Curator - RSS Reader Application
 
-A modern, full-featured RSS reader and news curation platform built with React, Node.js, and SQLite. Manage your news feeds, organize stories by categories, and curate content with an intuitive interface.
+A modern, full-featured RSS reader and news curation platform built with React, TypeScript, Node.js, and SQLite. Manage your news feeds, organize stories by categories, and curate content with an intuitive interface featuring AI-powered publishing capabilities.
 
 ## ✨ Features
 
@@ -18,6 +18,7 @@ A modern, full-featured RSS reader and news curation platform built with React, 
 - **AI-Powered Publishing**: Generate reactions and publish stories with AI assistance
 - **Publish Modal**: Interactive modal for story publishing with reaction generation
 - **Thumbnail Support**: Automatic thumbnail extraction from article URLs
+- **Unpublish Functionality**: Ability to unpublish stories and make them visible again
 - **Real-time Updates**: Live updates via WebSocket connections
 
 ### 🎨 User Experience
@@ -26,16 +27,19 @@ A modern, full-featured RSS reader and news curation platform built with React, 
 - **Real-time Countdown**: Shows time until next feed refresh
 - **Connection Status**: Visual indicator of server connection status
 - **Smooth Animations**: Polished UI with hover states and transitions
+- **API Key Validation**: Built-in validation for xAI API keys with user feedback
 
 ### 🔧 Advanced Features
 - **Database Management**: Built-in database viewer with import/export functionality
 - **Data Import/Export**: Complete database backup and restore capabilities
 - **Story Purging**: Bulk delete stories by age, category, or source
-- **API Key Management**: Secure configuration for AI and social media APIs
+- **API Key Management**: Secure configuration for xAI and Twitter/X APIs with validation
 - **Reaction Templates**: Customizable AI reaction prompts for different tones
-- **API Integration**: Support for AI and social media APIs
+- **API Integration**: Support for xAI (Grok) and Twitter/X APIs
 - **Automatic Polling**: Feeds refresh every 10 minutes automatically
 - **Error Handling**: Robust error handling and recovery
+- **Tabbed Interface**: Organized settings with tabbed navigation
+- **Warning Modals**: Safety confirmations for destructive operations
 
 ### 📷 Screenshots
 
@@ -44,12 +48,12 @@ These screenshots showcase key features of the application.
 | Published / Hidden | About | Database Viewer / Import / Export |
 |-----------|-------|----------|
 | ![Published / Hidden screenshot](docs/images/published.png) | ![About screenshot](docs/images/about.png) | ![Database Viewer screenshot](docs/images/database.png) |
-| *Main Interface* | *Settings -> About* | *Settings -> Database View Button* |
+| *Main Interface with story management* | *Settings -> About Tab* | *Settings -> Database View Button* |
 
 | Feeds | Light Mode | Reactions |
 |-------|------------|-----------|
 | ![Feeds screenshot](docs/images/feeds.png) | ![Light mode screenshot](docs/images/light.png) | ![Reactions screenshot](docs/images/reactions.png) |
-| *Settings -> Feeds Tab.* | *Light theme applied.* | *Settings -> Reactions* |
+| *Settings -> Feeds Tab with collapsible groups* | *Light theme applied* | *Settings -> Reactions Tab with templates* |
 
 ## 🚀 Quick Start
 
@@ -94,22 +98,25 @@ npm run dev
 ## 🏗️ Architecture
 
 ### Frontend (React + TypeScript)
-- **React 18** with TypeScript for type safety
+- **React 18** with full TypeScript support for type safety
 - **Tailwind CSS** for styling and responsive design
 - **Lucide React** for consistent iconography
 - **WebSocket client** for real-time updates
+- **Custom hooks** for WebSocket management
 
 ### Backend (Node.js + Express)
 - **Express.js** server with WebSocket support
 - **SQLite** database for data persistence
 - **RSS Parser** for feed processing
+- **Cheerio** for enhanced HTML parsing and thumbnail extraction
 - **CORS enabled** for cross-origin requests
 
 ### Database Schema
 - **feeds** - RSS feed sources and metadata
 - **categories** - Organization categories for feeds
 - **stories** - Individual news articles/stories
-- **api** - API keys and configuration
+- **api** - API keys and configuration (xAI, Twitter/X)
+- **reactions** - AI reaction templates and prompts
 
 ## 📱 Usage
 
@@ -136,9 +143,9 @@ npm run dev
 - **Filter by Visibility**: Show only visible stories or all stories
 
 ### API Configuration
-Configure API keys for enhanced features:
-- **XAI_API_KEY**: AI-powered content analysis
-- **Twitter/X API Keys**: Social media integration
+Configure API keys in the Settings -> API Settings tab:
+- **XAI_API_KEY**: AI-powered content generation using Grok models
+- **Twitter/X API Keys**: Social media integration (optional)
   - BEARER, CONSUMER_KEY, CONSUMER_SECRET
   - ACCESS_TOKEN, ACCESS_SECRET
 
@@ -150,15 +157,15 @@ Configure API keys for enhanced features:
 
 ### Story Publishing Workflow
 1. **Select Story**: Click "Publish" on any story card
-2. **Choose Reaction**: Select from 10 different reaction types (neutral, sarcastic, excited, etc.)
-3. **Generate Content**: AI generates human-like reactions with subtle humor
+2. **Choose Reaction**: Select from 10 different reaction types (neutral, sarcastic, excited, outraged, etc.)
+3. **Generate Content**: AI generates human-like reactions with subtle humor using xAI's Grok
 4. **Publish**: Story gets marked as published and hidden from main feed
 5. **Unpublish**: Option to revert and make story visible again
 
 ## 🔧 Configuration
 
 ### Environment Variables
-The application uses SQLite by default and doesn't require environment variables for basic operation. API keys are stored in the database and configured through the settings interface.
+The application uses SQLite by default and doesn't require environment variables for basic operation. API keys are stored securely in the database and configured through the Settings -> API Settings interface with built-in validation.
 
 ### Database Location
 - SQLite database: `server/rss_reader.db`
@@ -167,7 +174,7 @@ The application uses SQLite by default and doesn't require environment variables
 
 ## 📚 Documentation
 
-Comprehensive documentation is available in the `/docs` directory:
+Comprehensive documentation is available in the `/docs` directory with detailed component guides:
 
 - **[API Documentation](docs/api-documentation.md)** 📡 - Complete API reference
 - **[Component Documentation](docs/components/README.md)** 🧩 - Frontend component guide
@@ -176,9 +183,8 @@ Comprehensive documentation is available in the `/docs` directory:
 ### Component Documentation
 - [Header Component](docs/components/Header.md) - Application header
 - [StoryCard Component](docs/components/StoryCard.md) - Story display cards
-- [PublishModal Component](docs/components/PublishModal.md) - Story publishing interface
-- [SettingsModal Component](docs/components/SettingsModal.md) - Settings and configuration
-- [Component Template](docs/component-documentation-template.md) - Documentation template
+- [SettingsModal Component](docs/components/SettingsModal.md) - Tabbed settings interface
+- [Component Template](docs/component-documentation-template.md) - Documentation standard
 
 ## 🛠️ Development
 
@@ -186,76 +192,93 @@ Comprehensive documentation is available in the `/docs` directory:
 ```
 ├── src/                    # Frontend React application
 │   ├── components/         # React components
-│   │   ├── PublishModal.tsx    # Story publishing interface
-│   │   ├── SettingsModal.tsx   # Settings and configuration
+│   │   ├── Header.tsx          # Application header with theme toggle
+│   │   ├── Sidebar.tsx         # Category navigation with countdown
+│   │   ├── StoryCard.tsx       # Story display with thumbnail support
+│   │   ├── SettingsModal.tsx   # Tabbed settings interface
+│   │   ├── PublishModal.tsx    # AI-powered story publishing
+│   │   ├── UnpublishModal.tsx  # Story unpublishing confirmation
 │   │   ├── DatabaseViewModal.tsx # Database management
-│   │   └── ApiKeyWarningModal.tsx # API setup warnings
+│   │   ├── ApiKeyWarningModal.tsx # API setup warnings
+│   │   ├── DateRangeFilter.tsx # Time-based story filtering
+│   │   ├── VisibilityFilter.tsx # Story visibility controls
+│   │   └── Tab Components/     # Individual settings tabs
 │   ├── hooks/             # Custom React hooks
+│   │   └── useWebSocket.tsx    # WebSocket connection management
 │   └── main.tsx           # Application entry point
 ├── server/                # Backend Node.js server
 │   ├── database.js        # SQLite database layer
 │   ├── rssParser.js       # RSS feed parsing
 │   ├── websocket.js       # WebSocket server
-│   └── api endpoints      # Database import/export, thumbnails
-│   └── server.js          # Express server
+│   └── server.js          # Express server with API endpoints
 ├── docs/                  # Documentation
+│   ├── components/        # Component documentation
+│   └── images/            # Screenshot assets
 └── package.json           # Dependencies and scripts
 ```
 
 ### Available Scripts
 - `npm run dev` - Start frontend development server
 - `npm run server` - Start backend server only
-- `npm run start` - Start both frontend and backend
+- `npm run start` - Start both frontend and backend (recommended)
 - `npm run build` - Build for production
 - `npm run lint` - Run ESLint
+- `npm run clean` - Clean database lock files
 
 ### Technology Stack
-- **Frontend**: React 18, TypeScript, Tailwind CSS, Vite
+- **Frontend**: React 18, TypeScript, Tailwind CSS, Vite, Lucide React
 - **Backend**: Node.js, Express, WebSocket, SQLite
-- **Tools**: ESLint, PostCSS, Autoprefixer
+- **Parsing**: RSS Parser, Cheerio for HTML parsing
+- **Tools**: ESLint, PostCSS, Autoprefixer, Concurrently
 
 ## 🔍 Features in Detail
 
 ### AI-Powered Story Publishing
 The application includes a sophisticated publishing system:
-- **10 Reaction Types**: From neutral to outraged, each with unique prompts
-- **AI Content Generation**: Creates human-like reactions with subtle humor
-- **Social Media Ready**: Generated content optimized for social platforms
+- **10 Reaction Types**: From neutral to outraged, each with unique AI prompts
+- **xAI Integration**: Uses Grok models for human-like content generation
+- **Customizable Prompts**: Editable reaction templates in Settings -> Reactions
+- **Story Placeholder**: Dynamic [{story}] replacement in prompts
 - **Workflow Management**: Track published vs unpublished stories
 
 ### Database Management
 Comprehensive database tools for power users:
-- **Real-time Viewer**: Browse all database tables with live data
+- **Tabbed Viewer**: Browse database tables with organized tab interface
 - **Export Functionality**: Download complete database as JSON backup
-- **Import System**: Restore from backup with data validation
+- **Import System**: Restore from backup with safety warnings and validation
 - **Purge Tools**: Bulk delete stories by age, category, or source
+- **AUTOINCREMENT Preservation**: Maintains proper ID sequences during import
 
 ### Real-time Updates
 The application uses WebSocket connections to provide real-time updates:
 - New stories appear automatically when feeds are refreshed
 - Story visibility and publication status sync across all clients
 - Connection status indicator shows server connectivity
+- Automatic reconnection on connection loss
 
 ### Thumbnail Extraction
-Automatic thumbnail extraction from article URLs:
+Enhanced thumbnail extraction from article URLs:
 - Supports Open Graph images
 - Twitter card images
+- JSON-LD structured data
 - Fallback to feed logos
-- Caching to prevent duplicate requests
+- In-memory caching to prevent duplicate requests
+- 70-second timeout with graceful error handling
 
 ### Feed Polling
 - Automatic feed refresh every 10 minutes
 - Manual refresh available via header button
 - Countdown timer shows time until next refresh
-- Error handling for failed feed requests
+- Robust error handling for failed feed requests
+- Individual feed enable/disable controls
 
 ### Settings Interface
-Comprehensive settings modal with multiple tabs:
+Comprehensive tabbed settings modal:
 - **About**: Project information, statistics, and version details
-- **API Settings**: Secure configuration for AI and social media APIs
-- **RSS Feeds**: Add, edit, and manage feed sources
+- **API Settings**: Secure configuration for xAI and Twitter/X APIs with validation
+- **RSS Feeds**: Add, edit, and manage feed sources with collapsible groups
 - **Categories**: Organize feeds into custom categories
-- **Reactions**: Customize AI reaction prompts and types
+- **Reactions**: Customize AI reaction prompts with 10 default templates
 - **Purge Stories**: Bulk delete tools with safety confirmations
 
 ## 🤝 Contributing
@@ -266,6 +289,12 @@ Comprehensive settings modal with multiple tabs:
 4. Push to the branch (`git push origin feature/amazing-feature`)
 5. Open a Pull Request
 
+### Development Guidelines
+- Follow TypeScript best practices
+- Maintain component documentation
+- Test accessibility compliance
+- Ensure responsive design
+- Add proper error handling
 ## 📄 License
 
 This project is licensed under the MIT License - see the LICENSE file for details.
@@ -278,4 +307,4 @@ This project is licensed under the MIT License - see the LICENSE file for detail
 
 ---
 
-**Built with ❤️ using React, Node.js, and modern web technologies**
+**Built with ❤️ using React, TypeScript, Node.js, and modern web technologies**
