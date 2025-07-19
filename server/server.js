@@ -6,6 +6,7 @@ import { fileURLToPath } from 'url';
 import Database from './database.js';
 import RSSParser from './rssParser.js';
 import WebSocketServer from './websocket.js';
+import * as cheerio from 'cheerio'; // Updated import for better HTML parsing
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -128,61 +129,123 @@ app.get('/api/thumbnail', async (req, res) => {
     const html = await response.text();
     //console.log(`Fetched HTML length: ${html.length} characters`);
     
-    // Parse HTML to find thumbnail
-    const thumbnailRegexes = [
-      // Open Graph images (most common)
-      /<meta\s+property=["']og:image["']\s+content=["']([^"']+)["']/i,
-      /<meta\s+property=["']og:image:secure_url["']\s+content=["']([^"']+)["']/i,
-      /<meta\s+property=["']og:image:url["']\s+content=["']([^"']+)["']/i,
-      // Twitter cards
-      /<meta\s+name=["']twitter:image["']\s+content=["']([^"']+)["']/i,
-      /<meta\s+name=["']twitter:image:src["']\s+content=["']([^"']+)["']/i,
-      // Other meta tags
-      /<link\s+rel=["']image_src["']\s+href=["']([^"']+)["']/i,
-      /<meta\s+name=["']thumbnail["']\s+content=["']([^"']+)["']/i,
-      /<meta\s+itemprop=["']image["']\s+content=["']([^"']+)["']/i,
-      // JSON-LD structured data
-      /"image"\s*:\s*"([^"]+)"/i,
-      /"image"\s*:\s*\[\s*"([^"]+)"/i,
-      // Fallback: look for any img tag with likely thumbnail attributes
-      /<img[^>]+src=["']([^"']*(?:thumb|preview|featured|hero|banner)[^"']*)["']/i
+    // Use cheerio to parse HTML more reliably
+    const $ = cheerio.load(html);
+    
+    // Define selectors for common thumbnail meta tags
+    const selectors = [
+      // Open Graph
+      { selector: 'meta[property="og:image"]', attr: 'content' },
+      { selector: 'meta[property="og:image:secure_url"]', attr: 'content' },
+      { selector: 'meta[property="og:image:url"]', attr: 'content' },
+      // Twitter
+      { selector: 'meta[name="twitter:image"]', attr: 'content' },
+      { selector: 'meta[name="twitter:image:src"]', attr: 'content' },
+      // Other
+      { selector: 'link[rel="image_src"]', attr: 'href' },
+      { selector: 'meta[name="thumbnail"]', attr: 'content' },
+      { selector: 'meta[itemprop="image"]', attr: 'content' },
     ];
     
-    for (const regex of thumbnailRegexes) {
-      const match = html.match(regex);
-      if (match && match[1]) {
-        let imageUrl = match[1];
-        //console.log(`Found potential thumbnail: ${imageUrl}`);
-        
-        // Handle relative URLs
-        if (!imageUrl.startsWith('http')) {
-          try {
-            imageUrl = new URL(imageUrl, url).href;
-            //console.log(`Converted to absolute URL: ${imageUrl}`);
-          } catch (e) {
-            //console.log(`Failed to convert relative URL: ${imageUrl}`);
-            continue;
+    let thumbnail = null;
+    
+    // Try meta selectors first
+    for (const { selector, attr } of selectors) {
+      const value = $(selector).attr(attr)?.trim();
+      if (value) {
+        thumbnail = value;
+        break;
+      }
+    }
+    
+    // If no meta thumbnail, try JSON-LD
+    if (!thumbnail) {
+      const jsonLdScripts = $('script[type="application/ld+json"]');
+      for (let i = 0; i < jsonLdScripts.length; i++) {
+        try {
+          const jsonContent = jsonLdScripts.eq(i).html();
+          if (jsonContent) {
+            const parsed = JSON.parse(jsonContent);
+            // Handle single object or array
+            const data = Array.isArray(parsed) ? parsed : [parsed];
+            
+            for (const item of data) {
+              if (item.image) {
+                if (typeof item.image === 'string') {
+                  thumbnail = item.image;
+                } else if (Array.isArray(item.image) && item.image.length > 0) {
+                  thumbnail = typeof item.image[0] === 'string' ? item.image[0] : item.image[0].url;
+                } else if (typeof item.image === 'object' && item.image.url) {
+                  thumbnail = item.image.url;
+                }
+                if (thumbnail) break;
+              }
+            }
+            if (thumbnail) break;
           }
-        }
-        
-        // Validate image URL format (more permissive)
-        if (imageUrl.match(/\.(jpg|jpeg|png|gif|webp|svg)(\?.*)?$/i) || 
-            imageUrl.includes('image') || 
-            imageUrl.includes('photo') ||
-            imageUrl.includes('thumb')) {
-          //console.log(`Valid thumbnail found: ${imageUrl}`);
-          return res.json({ thumbnail: imageUrl });
+        } catch (e) {
+          // Skip invalid JSON
         }
       }
     }
     
-    //console.log('No thumbnail found in HTML');
+    // Fallback: Look for prominent images (e.g., first large img, or with specific classes/attributes)
+    if (!thumbnail) {
+      const imgSelectors = [
+        'img[src*="thumb"], img[src*="preview"], img[src*="featured"], img[src*="hero"], img[src*="banner"]',
+        'img[width][height]', // Images with explicit dimensions (likely important)
+        'img' // All images as last resort
+      ];
+      
+      for (const imgSelector of imgSelectors) {
+        const imgs = $(imgSelector);
+        if (imgs.length > 0) {
+          // Prefer the first one, or the largest if dimensions available
+          let selectedImg = imgs.first();
+          let maxArea = 0;
+          
+          imgs.each((idx, el) => {
+            const w = parseInt($(el).attr('width') || '0', 10);
+            const h = parseInt($(el).attr('height') || '0', 10);
+            const area = w * h;
+            if (area > maxArea) {
+              maxArea = area;
+              selectedImg = $(el);
+            }
+          });
+          
+          thumbnail = selectedImg.attr('src') || selectedImg.attr('data-src') || selectedImg.attr('srcset')?.split(',')[0].trim();
+          if (thumbnail) break;
+        }
+      }
+    }
+    
+    if (thumbnail) {
+      // Handle relative URLs
+      if (!/^https?:\/\//i.test(thumbnail)) {
+        try {
+          thumbnail = new URL(thumbnail, url).href;
+        } catch (e) {
+          thumbnail = null;
+        }
+      }
+      
+      // More permissive image URL validation
+      if (thumbnail && (thumbnail.match(/\.(jpg|jpeg|png|gif|webp|svg|avif)(?:\?.*)?$/i) || 
+          thumbnail.includes('photo') ||
+          thumbnail.includes('thumb') || 
+          thumbnail.includes('img'))) {
+        //console.log(`Valid thumbnail found: ${thumbnail}`);
+        return res.json({ thumbnail });
+      }
+    }
+    
+    //console.log('No thumbnail found');
     res.json({ thumbnail: null });
     
   } catch (error) {
     console.error('Thumbnail fetch error:', error);
     
-    // Handle specific error types with appropriate status codes
     if (error.name === 'TimeoutError' || error.message?.includes('timeout')) {
       return res.status(504).json({ error: 'Request timeout while fetching page' });
     }
@@ -195,8 +258,49 @@ app.get('/api/thumbnail', async (req, res) => {
       return res.status(503).json({ error: 'Unable to connect to the target server' });
     }
     
-    // Generic server error for other cases
     res.status(500).json({ error: 'Internal server error while processing thumbnail' });
+  }
+});
+
+// xAI API key verification endpoint
+app.post('/api/check-xapi', async (req, res) => {
+  const { apiKey } = req.body;
+  
+  if (!apiKey) {
+    return res.status(400).json({ error: 'apiKey is required in request body' });
+  }
+  
+  try {
+    const response = await fetch('https://api.x.ai/v1/chat/completions', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${apiKey}`
+      },
+      body: JSON.stringify({
+        model: 'grok-3-mini',
+        messages: [{ role: 'user', content: 'test' }],
+        max_tokens: 1,
+        stream: false
+      }),
+      signal: AbortSignal.timeout(10000) // 10 second timeout
+    });
+    
+    if (response.ok) {
+      return res.json({ valid: true });
+    } else {
+      const errorData = await response.json().catch(() => ({}));
+      return res.json({ 
+        valid: false, 
+        message: errorData.error?.message || `HTTP ${response.status}: Invalid API key` 
+      });
+    }
+  } catch (error) {
+    console.error('xAI API verification error:', error);
+    return res.status(500).json({ 
+      valid: false, 
+      message: 'Verification failed: ' + (error.message || 'Unknown error') 
+    });
   }
 });
 
@@ -253,7 +357,6 @@ app.post('/api/db-import', async (req, res) => {
     // Additional verification: ensure tables are empty
     try {
       const categoryCount = await database._get('SELECT COUNT(*) as count FROM categories');
-      console.log(`Categories table count after wipe: ${categoryCount.count}`);
       if (categoryCount.count > 0) {
         console.log('Force clearing categories table...');
         await database._run('DELETE FROM categories');
@@ -330,8 +433,8 @@ app.post('/api/db-import', async (req, res) => {
                 const exists = await database.checkStoryExists(record.link);
                 if (!exists) {
                   // Preserve original UID if it exists
-                  if (record.uid || record.UID) {
-                    const storyUid = record.uid || record.UID;
+                  if (record.uid) {
+                    const storyUid = record.uid;
                     await database._run(
                       'INSERT OR IGNORE INTO stories (uid, source_uid, categories_uid, title, link, published, visible, last) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
                       [
@@ -340,7 +443,7 @@ app.post('/api/db-import', async (req, res) => {
                         record.categories_uid || null,
                         record.title,
                         record.link,
-                        record.published || 0,
+                        Number(record.published) || 0,
                         record.visible !== undefined ? record.visible : 1,
                         record.last || null
                       ]
