@@ -265,7 +265,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
               </button>
               <button
                 onClick={onClose}
-                className={`transition-colors ${
+                className={`p-1 transition-colors ${
                   isDarkMode 
                     ? 'text-gray-500 hover:text-gray-300' 
                     : 'text-gray-400 hover:text-gray-600'
