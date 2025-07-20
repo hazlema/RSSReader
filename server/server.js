@@ -307,8 +307,9 @@ app.get('/api/check-xapi', async (req, res) => {
 
 app.get('/api/db-dump', async (req, res) => {
   try {
-    const [feeds, categories, apiKeys, reactions] = await Promise.all([
+    const [feeds, stories, categories, apiKeys, reactions] = await Promise.all([
       database.getAllFeeds(),
+      database.getAllStories(),
       database.getAllCategories(),
       database.getAllApiKeys(),
       database.getAllReactions()
@@ -316,6 +317,7 @@ app.get('/api/db-dump', async (req, res) => {
     
     res.json({
       feeds,
+	  stories,
       categories,
       apiKeys,
       reactions,
