@@ -1,4 +1,9 @@
+## Bug
+Reactions not importing correctly
+
+
 ## Next up
+- Change default reactions
 - Create endpoint to test twitter api settings
 - Finish the grok publish->generate api calls
 - Update the description with results of the api call settings->generate

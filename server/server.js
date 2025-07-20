@@ -305,31 +305,6 @@ app.get('/api/check-xapi', async (req, res) => {
   }
 });
 
-// Database dump endpoint for debugging
-// app.get('/api/db-dump', async (req, res) => {
-//   try {
-//     const [feeds, categories, stories, apiKeys, reactions] = await Promise.all([
-//       database.getAllFeeds(),
-//       database.getAllCategories(),
-//       database.getAllStories(),
-//       database.getAllApiKeys(),
-//       database.getAllReactions()
-//     ]);
-    
-//     res.json({
-//       feeds,
-//       categories,
-//       stories,
-//       apiKeys,
-//       reactions,
-//       timestamp: new Date().toISOString()
-//     });
-//   } catch (error) {
-//     console.error('Database dump error:', error);
-//     res.status(500).json({ error: error.message });
-//   }
-// });
-
 app.get('/api/db-dump', async (req, res) => {
   try {
     const [feeds, categories, apiKeys, reactions] = await Promise.all([
@@ -384,6 +359,10 @@ app.post('/api/db-import', async (req, res) => {
         console.log('Force clearing categories table...');
         await database._run('DELETE FROM categories');
         await database._run('DELETE FROM sqlite_sequence WHERE name = "categories"');
+
+		console.log('Force clearing reactions table...');
+        await database._run('DELETE FROM reactions');
+        await database._run('DELETE FROM sqlite_sequence WHERE name = "reactions"');
       }
     } catch (verifyError) {
       console.error('Error verifying table cleanup:', verifyError);
