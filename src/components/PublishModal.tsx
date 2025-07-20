@@ -39,17 +39,52 @@ export const PublishModal: React.FC<PublishModalProps> = ({
     }
   };
 
-  // Placeholder generateReaction function - replace with your actual implementation
-  const generateReaction = (storyObject: any, reactionPrompt: string) => {
+  // Our star function gets an upgrade! Now it calls the Grok API like a boss.
+  // We're replacing {url} in the prompt, sending it as a question, and grabbing the answer.
+  // Added async/await for that smooth, non-blocking vibe. Because nobody likes a frozen UI.
+  const generateReaction = async (storyObject: any, reactionPrompt: string) => {
     console.log('GenerateReaction function called with:');
     console.log('Story:', storyObject);
-    console.log('Reaction Prompt:', reactionPrompt);
+    console.log('Reaction Prompt (before replacement):', reactionPrompt);
     
-    // TODO: Implement your generateReaction function logic here
-    // This might involve API calls, text processing, etc.
+    // Replace {url} with the actual story link. If it's not there, no biggie – string stays chill.
+    const processedPrompt = reactionPrompt.replace(/{url}/g, storyObject.link);
+    console.log('Processed Prompt:', processedPrompt);
+
+    setIsGenerating(true); // Spin that loader! We're off to API land.
+
+    try {
+      // Fire off a POST to /api/askGrok. Assuming JSON payload and response.
+      // If your API expects something else, tweak accordingly – but hey, standards are fun!
+      const response = await fetch('/api/askGrok', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ question: processedPrompt }),
+      });
+
+      if (!response.ok) {
+        throw new Error(`API groaned with status: ${response.status}. Maybe it's having a bad day?`);
+      }
+
+      const data = await response.json();
+      // Grab the 'answer' from the payload. If it's not there, we'll default to a punny error message.
+      const generatedText = data.answer || 'Oops, Grok must be grokking too hard. Try again!';
+      
+      setReactionText(generatedText); // Update the textarea with the shiny new reaction text.
+      console.log('Generated Reaction Text:', generatedText);
+    } catch (error) {
+      console.error('API call went sideways:', error);
+      setReactionText('Error generating reaction. The API might be on a coffee break. ☕');
+      // In a real app, you'd want to show a toast or alert here for better UX. But keeping it simple!
+    } finally {
+      setIsGenerating(false); // Stop the spinner. Mission accomplished (or not).
+    }
   };
 
-  // Placeholder publish function - replace with your actual implementation
+  // Placeholder publish function - still here, unchanged. Because why fix what ain't broke?
+  // (Unless it is – then we'd pun about it.)
   const publishStoryWithReaction = (storyObject: any, generatedReactionText: string) => {
     console.log('PublishStoryWithReaction function called with:');
     console.log('Story:', storyObject);
@@ -75,14 +110,10 @@ export const PublishModal: React.FC<PublishModalProps> = ({
       return;
     }
 
-    // Replace [{story}] placeholder with actual story title
-    const processedPrompt = reaction.prompt.replace(/\[{story}\]/g, story.title);
-    
-    // For now, just populate the text area with the processed prompt
-    setTimeout(() => {
-      setReactionText(processedPrompt);
-      setIsGenerating(false);
-    }, 500);
+    // Since generateReaction now handles the magic, we can call it here too if needed.
+    // But wait – handleReactionChange already calls it on select. Is this button redundant?
+    // For now, keeping it to re-generate if the user wants a do-over. UX win!
+    await generateReaction(story, reaction.prompt);
   };
 
   const handlePublish = () => {

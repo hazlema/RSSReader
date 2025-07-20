@@ -1,0 +1,298 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>RSS Feed Wizard</title>
+    <!-- DaisyUI CDN for sleek component styling -->
+    <link href="https://cdn.jsdelivr.net/npm/daisyui@4.12.10/dist/full.min.css" rel="stylesheet" type="text/css" />
+    <!-- Tailwind Play CDN for DaisyUI compatibility -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        // Configure Tailwind/DaisyUI to enforce dark theme
+        tailwind.config = {
+            daisyui: {
+                themes: ["dark"], // Explicitly set dark theme
+            },
+        };
+    </script>
+    <style>
+        /* Smooth expansion for wizardly reveal */
+        .wizard-expand {
+            transition: max-height 0.5s ease-in-out, opacity 0.5s ease-in-out;
+        }
+        .wizard-hidden {
+            max-height: 0;
+            opacity: 0;
+            overflow: hidden;
+        }
+        .wizard-visible {
+            max-height: 800px; /* Room for all fields */
+            opacity: 1;
+        }
+        /* Logo styling: DaisyUI avatar tweak */
+        .avatar img {
+            background-color: #1f2937; /* Fallback for transparency */
+        }
+    </style>
+</head>
+<body class="bg-base-200 min-h-screen flex items-center justify-center p-4">
+    <div class="card bg-base-300 shadow-xl w-full max-w-md">
+        <div class="card-body">
+            <h1 class="text-2xl font-bold text-center">RSS Feed Wizard</h1>
+            <p class="text-sm text-base-content/70 text-center mb-6">Enter the RSS feed URL below and click 'Add' or press Enter.</p>
+            
+            <!-- Initial Input Form -->
+            <form id="rss-form" class="flex flex-col gap-4">
+                <div class="flex gap-2">
+                    <input 
+                        type="url" 
+                        id="rss-url" 
+                        placeholder="https://example.com/rss" 
+                        class="input input-bordered flex-grow"
+                        aria-label="RSS URL input"
+                    />
+                    <button 
+                        type="submit" 
+                        class="btn btn-primary"
+                        aria-label="Add RSS feed"
+                    >
+                        Add
+                    </button>
+                </div>
+                
+                <!-- Expandable Fields Section -->
+                <div id="expanded-fields" class="wizard-expand wizard-hidden flex flex-col gap-4">
+                    <!-- Logo Image -->
+                    <div class="text-center">
+                        <label class="block text-sm font-medium mb-2">Logo Image (Automatically fetched from favicon)</label>
+                        <div class="avatar">
+                            <div class="w-32 rounded-full">
+                                <img id="logo-image" src="https://via.placeholder.com/128?text=Logo" alt="Feed Logo" />
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Feed Name -->
+                    <div>
+                        <label for="feed-name" class="block text-sm font-medium mb-1">Feed Name (Automatically suggested)</label>
+                        <input 
+                            type="text" 
+                            id="feed-name" 
+                            placeholder="Feed Name" 
+                            class="input input-bordered w-full"
+                            aria-label="Feed name"
+                        />
+                    </div>
+                    
+                    <!-- Feed URL -->
+                    <div>
+                        <label for="url-field" class="block text-sm font-medium mb-1">Feed URL (Editable)</label>
+                        <input 
+                            type="url" 
+                            id="url-field" 
+                            class="input input-bordered w-full"
+                            aria-label="Feed URL"
+                        />
+                    </div>
+                    
+                    <!-- Category -->
+                    <div>
+                        <label for="category" class="block text-sm font-medium mb-1">Category (e.g., News, Technology)</label>
+                        <input 
+                            type="text" 
+                            id="category" 
+                            placeholder="News, Technology, etc." 
+                            class="input input-bordered w-full"
+                            aria-label="Feed category"
+                        />
+                    </div>
+                    
+                    <!-- Buttons -->
+                    <div class="flex justify-end gap-2">
+                        <button 
+                            type="button" 
+                            id="change-image" 
+                            class="btn btn-warning"
+                            aria-label="Change logo image"
+                        >
+                            Change Image
+                        </button>
+                        <button 
+                            type="button" 
+                            id="save-feed" 
+                            class="btn btn-success"
+                            aria-label="Save feed"
+                        >
+                            Save
+                        </button>
+                        <button 
+                            type="button" 
+                            id="cancel-feed" 
+                            class="btn btn-error"
+                            aria-label="Cancel"
+                        >
+                            Cancel
+                        </button>
+                    </div>
+                    
+                    <!-- Hidden file input for image upload -->
+                    <input type="file" id="file-input" accept="image/*" style="display: none;" />
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script>
+        // TLD Extractor: Extracts the top-level domain component for naming
+        function getTLD(hostname) {
+            const parts = hostname.split('.').filter(p => p);
+            if (parts.length < 2) return parts[0]?.charAt(0).toUpperCase() + parts[0]?.slice(1) || '';
+            let suffixLength = 1;
+            const last = parts[parts.length - 1];
+            const second = parts[parts.length - 2];
+            const knownMultiSeconds = new Set(['co', 'com', 'org', 'net', 'edu', 'gov', 'ac', 'me']);
+            if (last.length === 2 && knownMultiSeconds.has(second)) {
+                suffixLength = 2;
+            }
+            if (last === 'gov') {
+                suffixLength = 1;
+            }
+            const tldIndex = parts.length - suffixLength - 1;
+            if (tldIndex < 0) return '';
+            const tld = parts[tldIndex];
+            return tld.charAt(0).toUpperCase() + tld.slice(1);
+        }
+
+        // URL Parser: Parses and capitalizes hostname for feed naming
+        function parseAndUppercaseHostname(feedUrl) {
+            try {
+                const parsedUrl = new URL(feedUrl);
+                const hostname = parsedUrl.hostname;
+                return getTLD(hostname);
+            } catch (err) {
+                console.error('Invalid URL:', err.message);
+                return '';
+            }
+        }
+
+        // JavaScript for form functionality – clean and modular
+        const form = document.getElementById('rss-form');
+        const rssInput = document.getElementById('rss-url');
+        const expandedFields = document.getElementById('expanded-fields');
+        const logoImage = document.getElementById('logo-image');
+        const feedNameField = document.getElementById('feed-name');
+        const urlField = document.getElementById('url-field');
+        const categoryField = document.getElementById('category');
+        const changeButton = document.getElementById('change-image');
+        const fileInput = document.getElementById('file-input');
+        const saveButton = document.getElementById('save-feed');
+        const cancelButton = document.getElementById('cancel-feed');
+
+        // Function to handle expansion logic
+        function expandWizard() {
+            console.log('Attempting to expand, RSS URL:', rssInput.value);
+            const feedUrl = rssInput.value.trim();
+            if (!feedUrl) {
+                alert('Please enter a valid RSS URL.');
+                return;
+            }
+            let domain = '';
+            try {
+                const parsedUrl = new URL(feedUrl);
+                domain = parsedUrl.hostname;
+                console.log('Parsed domain:', domain);
+            } catch (err) {
+                console.error('URL parsing failed:', err.message);
+                alert('Invalid RSS URL. Please ensure it is a full link, e.g., "https://example.com/rss".');
+                return;
+            }
+
+            // Auto-fetch favicon
+            logoImage.src = domain ? `https://www.google.com/s2/favicons?domain=${encodeURIComponent(domain)}&sz=128` : 'https://via.placeholder.com/128?text=Logo';
+            
+            // Populate fields
+            urlField.value = feedUrl;
+            const defaultName = parseAndUppercaseHostname(feedUrl);
+            feedNameField.value = defaultName || '';
+            categoryField.value = '';
+            
+            // Expand smoothly
+            expandedFields.classList.remove('wizard-hidden');
+            expandedFields.classList.add('wizard-visible');
+            console.log('Expanded fields shown');
+        }
+
+        // Trigger on form submit (Add button or Enter key)
+        form.addEventListener('submit', (e) => {
+            e.preventDefault();
+            expandWizard();
+        });
+
+        // Trigger on input blur (lose focus)
+        rssInput.addEventListener('blur', () => {
+            expandWizard();
+        });
+
+        // Change Image: Trigger file input
+        changeButton.addEventListener('click', () => {
+            console.log('Change image clicked');
+            fileInput.click();
+        });
+
+        // Handle image upload: Preview local
+        fileInput.addEventListener('change', (e) => {
+            console.log('File input changed, files:', e.target.files);
+            const file = e.target.files[0];
+            if (file) {
+                const objectURL = URL.createObjectURL(file);
+                logoImage.src = objectURL;
+                console.log('Image preview updated:', objectURL);
+            }
+        });
+
+        // Save logic – placeholder for backend integration
+        saveButton.addEventListener('click', () => {
+            console.log('Save clicked, fields:', {
+                logo: logoImage.src,
+                name: feedNameField.value,
+                url: urlField.value,
+                category: categoryField.value
+            });
+            if (urlField.value.trim() && feedNameField.value.trim()) {
+                console.log('Saving feed:', {
+                    logo: logoImage.src,
+                    name: feedNameField.value,
+                    url: urlField.value,
+                    category: categoryField.value
+                });
+                alert('Feed saved successfully.');
+                resetFields();
+            } else {
+                alert('Please fill in the Feed Name and URL.');
+            }
+        });
+
+        // Cancel: Hide and reset
+        cancelButton.addEventListener('click', () => {
+            console.log('Cancel clicked');
+            resetFields();
+        });
+
+        function resetFields() {
+            expandedFields.classList.remove('wizard-visible');
+            expandedFields.classList.add('wizard-hidden');
+            logoImage.src = 'https://via.placeholder.com/128?text=Logo';
+            feedNameField.value = '';
+            urlField.value = '';
+            categoryField.value = '';
+            fileInput.value = '';
+            rssInput.value = ''; // Clear initial input
+            console.log('Fields reset');
+        }
+
+        // Auto-focus on input for improved usability
+        rssInput.focus();
+    </script>
+</body>
+</html>
