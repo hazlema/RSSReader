@@ -564,6 +564,42 @@ app.post('/api/db-import', async (req, res) => {
   }
 });
 
+app.post('/api/askGrok', async (req, res) => {
+  const { question } = req.body;
+  if (!question) {
+    return res.status(400).json({ error: 'Question is required' });
+  }
+  try {
+    const apiKeys = await database.getAllApiKeys();
+    const apiKey = apiKeys.find(key => key.key_name === 'XAI_API_KEY')?.key_value;
+    if (!apiKey) {
+      return res.status(400).json({ error: 'No XAI API key stored' });
+    }
+    const response = await fetch('https://api.x.ai/v1/chat/completions', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${apiKey}`
+      },
+      body: JSON.stringify({
+        model: 'grok-3',
+        messages: [{ role: 'user', content: question }],
+        max_tokens: 1000,
+        stream: false
+      })
+    });
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      return res.status(response.status).json({ error: errorData.error?.message || 'API error' });
+    }
+    const data = await response.json();
+    const answer = data.choices[0].message.content.trim();
+    res.json({ answer });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
 // Serve static files AFTER API routes
 app.use(express.static(path.join(__dirname, '../dist')));
 
