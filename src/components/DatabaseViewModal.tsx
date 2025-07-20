@@ -461,7 +461,8 @@ export const DatabaseViewModal: React.FC<DatabaseViewModalProps> = ({
             <RefreshCw className="w-12 h-12 animate-spin mb-4" />
             <p className="text-xl mb-3">Refresh in 5 seconds</p>
 			<p className="text-xl">When the page restarts</p>
-            <p className="text-xl">You will have to refresh the stories by clicking the refresh button or wait 10 minutes</p>
+            <p className="text-xl">You might have to refresh the stories by clicking the refresh button</p>
+			<p className="text-xl">or wait 10 minutes</p>
           </div>
         </div>
       )}

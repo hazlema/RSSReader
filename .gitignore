@@ -39,5 +39,5 @@ server/rss_reader.db-shm
 .env.development.local
 .env.test.local
 .env.production.local
-
-tests/*
+db-dump.json
+discord-webhook.sh
